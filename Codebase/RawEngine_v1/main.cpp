@@ -7,6 +7,10 @@
 #include <ctime>
 #include <algorithm>
 
+#include <imgui.h>
+#include <imgui_impl_glfw.h>
+#include <imgui_impl_opengl3.h>
+
 #include "core/Particle.h"
 #include "core/Shader.h"
 
@@ -20,34 +24,6 @@ void processInput(GLFWwindow *window) {
 void framebuffer_size_callback(GLFWwindow *window,
                                int width, int height) {
     glViewport(0, 0, width, height);
-}
-
-std::string readFileToString(const std::string &filePath) {
-    std::ifstream fileStream(filePath, std::ios::in);
-    if (!fileStream.is_open()) {
-        printf("Could not open file: %s\n", filePath.c_str());
-        return "";
-    }
-    std::stringstream buffer;
-    buffer << fileStream.rdbuf();
-    return buffer.str();
-}
-
-GLuint generateShader(const std::string &shaderPath, GLuint shaderType) {
-    printf("Loading shader:\n%s\n", shaderPath.c_str());
-    const std::string shaderText = readFileToString(shaderPath);
-    const GLuint shader = glCreateShader(shaderType);
-    const char *s_str = shaderText.c_str();
-    glShaderSource(shader, 1, &s_str, nullptr);
-    glCompileShader(shader);
-    GLint success = 0;
-    glGetShaderiv(shader, GL_COMPILE_STATUS, &success);
-    if (!success) {
-        char infoLog[512];
-        glGetShaderInfoLog(shader, 512, NULL, infoLog);
-        printf("Error! Shader issue [%s]: %s\n", shaderPath.c_str(), infoLog);
-    }
-    return shader;
 }
 
 int main() {
@@ -73,6 +49,16 @@ int main() {
         printf("Failed to initialize GLAD\n");
         return -1;
     }
+
+    IMGUI_CHECKVERSION();
+    ImGui::CreateContext();
+    ImGuiIO &io = ImGui::GetIO();
+    io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;
+
+    //Setup platforms
+    ImGui_ImplGlfw_InitForOpenGL(window, true);
+    ImGui_ImplOpenGL3_Init("#version 400");
+
 
     core::Shader shader("shaders/vertex.vert", "shaders/fragment.frag");
 
@@ -131,18 +117,46 @@ int main() {
         glClear(GL_COLOR_BUFFER_BIT);
 
 
+        ImGui_ImplOpenGL3_NewFrame();
+        ImGui_ImplGlfw_NewFrame();
+        ImGui::NewFrame();
+
+        ImGui::Begin("Settings");
+        if (ImGui::TreeNode("Particle Settings")) {
+            ImGui::ColorEdit3("Particle Color", glm::value_ptr(particleColor));
+            ImGui::SliderFloat("Particle Radius", &particleRadius, 0.01f, 0.1f);
+
+            ImGui::TreePop();
+        }
+        if (ImGui::TreeNode("Particle Settings")) {
+            ImGui::ColorEdit3("Background Color", glm::value_ptr(backgroundColor));
+
+            ImGui::TreePop();
+            ImGui::Separator();
+        }
+        ImGui::End();
+
+
 
         //shader.setVec2("particles[0].position", particle.position);
         shader.setVec2("particlePosition", particle.position);
         glBindVertexArray(quadVAO);
         glDrawArrays(GL_TRIANGLES, 0, 6);
         glBindVertexArray(0);
+
+        ImGui::Render();
+        ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
+
         glfwSwapBuffers(window);
         glfwPollEvents();
         clock_t end = clock();
         elapsedSecs = double(end - begin) / CLOCKS_PER_SEC;
         accumulatedTime += elapsedSecs;
     }
+
+    ImGui_ImplOpenGL3_Shutdown();
+    ImGui_ImplGlfw_Shutdown();
+    ImGui::DestroyContext();
 
     glDeleteVertexArrays(1, &quadVAO);
     glDeleteBuffers(1, &quadVBO);
