@@ -88,6 +88,9 @@ namespace core {
         glBindTexture(GL_TEXTURE_2D, textureID);
         glUniform1i(GetUniformLocation(name), unit);
     }
+    void Shader::setVec2(const std::string &name, const glm::vec2 &value) const {
+        glUniform2f(GetUniformLocation(name), value.x, value.y);
+    }
     void Shader::setVec3(const std::string &name, const glm::vec3 &value) const {
         glUniform3f(GetUniformLocation(name), value.x, value.y, value.z);
     }

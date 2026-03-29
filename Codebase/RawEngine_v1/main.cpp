@@ -7,6 +7,7 @@
 #include <ctime>
 #include <algorithm>
 
+#include "core/Particle.h"
 #include "core/Shader.h"
 
 double accumulatedTime = 0;
@@ -73,31 +74,55 @@ int main() {
         return -1;
     }
 
-    core::Shader shader("shaders/vertex.vs", "shaders/fragment.fs");
-    
-    GLuint VAO;
-    glGenVertexArrays(1, &VAO);
-    glBindVertexArray(VAO);
+    core::Shader shader("shaders/vertex.vert", "shaders/fragment.frag");
 
-    const float vertices[] = {
-            0.0f, 0.5f, 0.0f,
-            0.5f, -0.5f, 0.0f,
-            -0.5f, -0.5f, 0.0f
+    float screenQuadVertices[] = {
+        // positions   // texCoords
+        -1.0f, -1.0f,  0.0f, 0.0f,
+         1.0f, -1.0f,  1.0f, 0.0f,
+         1.0f,  1.0f,  1.0f, 1.0f,
+
+        -1.0f, -1.0f,  0.0f, 0.0f,
+         1.0f,  1.0f,  1.0f, 1.0f,
+        -1.0f,  1.0f,  0.0f, 1.0f
     };
-    GLuint VBO;
-    glGenBuffers(1, &VBO);
-    glBindBuffer(GL_ARRAY_BUFFER, VBO);
-    glBufferData(GL_ARRAY_BUFFER, sizeof(vertices),
-                 vertices, GL_STATIC_DRAW);
-    glVertexAttribPointer(0, 3, GL_FLOAT,
-                          GL_FALSE, 3 * sizeof(float), (void *) 0);
+
+    unsigned int quadVAO, quadVBO;
+    glGenVertexArrays(1, &quadVAO);
+    glGenBuffers(1, &quadVBO);
+
+    glBindVertexArray(quadVAO);
+    glBindBuffer(GL_ARRAY_BUFFER, quadVBO);
+    glBufferData(GL_ARRAY_BUFFER, sizeof(screenQuadVertices), screenQuadVertices, GL_STATIC_DRAW
+    );
+
+    // position
     glEnableVertexAttribArray(0);
-    glBindBuffer(GL_ARRAY_BUFFER, 0);
+    glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 4 * sizeof(float), (void*)0);
+
+    // texcoords
+    glEnableVertexAttribArray(1);
+    glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 4 * sizeof(float), (void*)(2 * sizeof(float))
+    );
+
     glBindVertexArray(0);
 
     glm::vec4 clearColor = glm::vec4(0.2f, 0.2f, 0.2f, 1.0f);
     glClearColor(clearColor.r,
                  clearColor.g, clearColor.b, clearColor.a);
+
+    shader.use();
+
+    glm::vec3 particleColor = glm::vec3(0.0f, 1.0f, 1.0f);
+    glm::vec3 backgroundColor = glm::vec3(0.0f, 0.0f, 0.0f);
+    shader.setVec3("particleColor", particleColor);
+    shader.setVec3("backgroundColor", backgroundColor);
+
+    float particleRadius = 0.5f;
+    shader.setFloat("particleRadius", particleRadius);
+
+    glm::vec2 position = glm::vec2(0.5f, 0.5f);
+    core::Particle particle(position);
 
     double elapsedSecs;
     while (!glfwWindowShouldClose(window)) {
@@ -105,10 +130,12 @@ int main() {
         processInput(window);
         glClear(GL_COLOR_BUFFER_BIT);
 
-        //glUseProgram(shaderProgram);
-        shader.use();
-        glBindVertexArray(VAO);
-        glDrawArrays(GL_TRIANGLES, 0, 3);
+
+
+        //shader.setVec2("particles[0].position", particle.position);
+        shader.setVec2("particlePosition", particle.position);
+        glBindVertexArray(quadVAO);
+        glDrawArrays(GL_TRIANGLES, 0, 6);
         glBindVertexArray(0);
         glfwSwapBuffers(window);
         glfwPollEvents();
@@ -117,8 +144,8 @@ int main() {
         accumulatedTime += elapsedSecs;
     }
 
-    glDeleteVertexArrays(1, &VAO);
-    glDeleteBuffers(1, &VBO);
+    glDeleteVertexArrays(1, &quadVAO);
+    glDeleteBuffers(1, &quadVBO);
     glDeleteProgram(shader.ID);
     glfwTerminate();
     return 0;
