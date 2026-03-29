@@ -3,7 +3,8 @@ project(RawEngine)
 
 set(CMAKE_CXX_STANDARD 20)
 
-add_executable(RawEngine main.cpp)
+add_executable(RawEngine main.cpp
+        core/Shader.cpp)
 
 add_custom_command(
         TARGET RawEngine PRE_BUILD

@@ -7,6 +7,8 @@
 #include <ctime>
 #include <algorithm>
 
+#include "core/Shader.h"
+
 double accumulatedTime = 0;
 
 void processInput(GLFWwindow *window) {
@@ -71,24 +73,8 @@ int main() {
         return -1;
     }
 
-    const GLuint vertexShader = generateShader("shaders/vertex.vs", GL_VERTEX_SHADER);
-    const GLuint fragmentShader = generateShader("shaders/fragment.fs", GL_FRAGMENT_SHADER);
-
-    const unsigned int shaderProgram = glCreateProgram();
-    glAttachShader(shaderProgram, vertexShader);
-    glAttachShader(shaderProgram, fragmentShader);
-    glLinkProgram(shaderProgram);
-
-    int success;
-    char infoLog[512];
-    glGetProgramiv(shaderProgram, GL_LINK_STATUS, &success);
-    if (!success) {
-        glGetProgramInfoLog(shaderProgram, 512, NULL, infoLog);
-        printf("Error! Making Shader Program: %s\n", infoLog);
-    }
-    glDeleteShader(vertexShader);
-    glDeleteShader(fragmentShader);
-
+    core::Shader shader("shaders/vertex.vs", "shaders/fragment.fs");
+    
     GLuint VAO;
     glGenVertexArrays(1, &VAO);
     glBindVertexArray(VAO);
@@ -119,7 +105,8 @@ int main() {
         processInput(window);
         glClear(GL_COLOR_BUFFER_BIT);
 
-        glUseProgram(shaderProgram);
+        //glUseProgram(shaderProgram);
+        shader.use();
         glBindVertexArray(VAO);
         glDrawArrays(GL_TRIANGLES, 0, 3);
         glBindVertexArray(0);
@@ -132,7 +119,7 @@ int main() {
 
     glDeleteVertexArrays(1, &VAO);
     glDeleteBuffers(1, &VBO);
-    glDeleteProgram(shaderProgram);
+    glDeleteProgram(shader.ID);
     glfwTerminate();
     return 0;
 }
