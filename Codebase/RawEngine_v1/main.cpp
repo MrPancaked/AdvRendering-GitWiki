@@ -112,11 +112,9 @@ int main() {
     float particleRadius = 10.0f;
 
     int particleAmount = 10;
+    shader.setInt("particleAmount", particleAmount);
 
     core::ParticleManager particleManager(particleAmount);
-
-    glm::vec2 position = glm::vec2(g_width / 2, g_height / 2);
-    core::Particle particle(position);
 
     double elapsedSecs;
     while (!glfwWindowShouldClose(window)) {
@@ -141,7 +139,6 @@ int main() {
         }
         if (ImGui::TreeNode("Particle Settings")) {
             ImGui::ColorEdit3("Color", glm::value_ptr(particleColor));
-            ImGui::DragFloat2("Position", glm::value_ptr(particle.position), 1.0f);
             ImGui::SliderFloat("Radius", &particleRadius, 1.0f, 100.0f);
 
             ImGui::TreePop();

@@ -4,6 +4,7 @@
 
 #ifndef RAWENGINE_PARTICLEMANAGER_H
 #define RAWENGINE_PARTICLEMANAGER_H
+#include <string>
 #include <vector>
 #include <glm/vec2.hpp>
 
@@ -13,9 +14,9 @@ namespace core {
         int particleAmount;
         std::vector<glm::vec2> particlePositions;
 
-        ParticleManager(int particleAmount) : particleAmount(particleAmount){
+        explicit ParticleManager(int particleAmount) : particleAmount(particleAmount){
             for (int i = 0; i < particleAmount; i++) {
-                particlePositions.emplace_back(static_cast<float>(i) * 25.0f, 0.0f);
+                particlePositions.emplace_back(static_cast<float>(i) * 25.0f, 300.0f);
             }
         };
     };
