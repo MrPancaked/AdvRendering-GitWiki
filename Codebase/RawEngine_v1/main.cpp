@@ -111,12 +111,15 @@ int main() {
 
     float particleRadius = 10.0f;
 
-    int particleAmount = 10;
+    int particleAmount = 1000;
     shader.setInt("particleAmount", particleAmount);
 
-    core::ParticleManager particleManager(particleAmount);
+    core::ParticleManager particleManager(particleAmount, g_width, g_height);
 
     double elapsedSecs;
+    double currentTime = glfwGetTime();
+    double finishFrameTime = 0.0;
+    float deltaTime = 0.0f;
     while (!glfwWindowShouldClose(window)) {
         clock_t begin = clock();
         processInput(window);
@@ -149,10 +152,12 @@ int main() {
         shader.setVec3("backgroundColor", backgroundColor);
         shader.setFloat("particleRadius", particleRadius);
 
+        particleManager.UpdateParticles(deltaTime);
+
         for (int i = 0; i < particleManager.particleAmount; i++) {
             std::string index = "particles[" + std::to_string(i) + "].";
 
-            shader.setVec2(index + "position", particleManager.particlePositions[i]);
+            shader.setVec2(index + "position", particleManager.positions[i]);
         }
         glBindVertexArray(quadVAO);
         glDrawArrays(GL_TRIANGLES, 0, 6);
@@ -163,6 +168,11 @@ int main() {
 
         glfwSwapBuffers(window);
         glfwPollEvents();
+
+        finishFrameTime = glfwGetTime();
+        deltaTime = static_cast<float>(finishFrameTime - currentTime);
+        currentTime = finishFrameTime;
+
         clock_t end = clock();
         elapsedSecs = double(end - begin) / CLOCKS_PER_SEC;
         accumulatedTime += elapsedSecs;

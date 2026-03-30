@@ -7,18 +7,31 @@
 #include <string>
 #include <vector>
 #include <glm/vec2.hpp>
+#include <random>
 
 namespace core {
     class ParticleManager {
     public:
+        float timeStep = 1.0f / 1.0f;
+        float gravity = 0.0f;
         int particleAmount;
-        std::vector<glm::vec2> particlePositions;
+        std::vector<glm::vec2> positions;
+        std::vector<glm::vec2> velocities;
 
-        explicit ParticleManager(int particleAmount) : particleAmount(particleAmount){
+        ParticleManager(const int particleAmount, const int screenWidth, const int screenHeight) : particleAmount(particleAmount){
             for (int i = 0; i < particleAmount; i++) {
-                particlePositions.emplace_back(static_cast<float>(i) * 25.0f, 300.0f);
+
+                std::random_device rd;
+                std::mt19937 gen(rd());
+                std::uniform_real_distribution<> widthDist(0.0f, screenWidth);
+                std::uniform_real_distribution<> heightDist(0.0f, screenHeight);
+
+                positions.emplace_back(widthDist(gen), heightDist(gen));
+                velocities.emplace_back(0.0f, 0.0f);
             }
-        };
+        }
+
+        void UpdateParticles(const float deltaTime);
     };
 } // core
 

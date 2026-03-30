@@ -18,7 +18,7 @@ struct Particle
 };
 
 uniform int particleAmount;
-uniform Particle particles[100];
+uniform Particle particles[1000];
 uniform float particleRadius;
 
 void main()
