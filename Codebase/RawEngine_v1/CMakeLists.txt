@@ -16,9 +16,12 @@ set(IMGUI_SOURCES
 )
 
 add_executable(RawEngine main.cpp
+        ${IMGUI_SOURCES}
         core/Shader.cpp
         core/Particle.cpp
-        core/Particle.h)
+        core/Particle.h
+        core/ParticleManager.cpp
+        core/ParticleManager.h)
 
 add_custom_command(
         TARGET RawEngine PRE_BUILD

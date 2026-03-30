@@ -12,17 +12,24 @@
 #include <imgui_impl_opengl3.h>
 
 #include "core/Particle.h"
+#include "core/ParticleManager.h"
 #include "core/Shader.h"
 
 double accumulatedTime = 0;
+
+int g_width = 800;
+int g_height = 600;
 
 void processInput(GLFWwindow *window) {
     if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS)
         glfwSetWindowShouldClose(window, true);
 }
 
-void framebuffer_size_callback(GLFWwindow *window,
-                               int width, int height) {
+void framebuffer_size_callback(GLFWwindow *window, int width, int height) {
+    g_width = width;
+    g_height = height;
+
+    printf("width: %d, height: %d\n", g_width, g_height);
     glViewport(0, 0, width, height);
 }
 
@@ -35,7 +42,7 @@ int main() {
     glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE);
 #endif
 
-    GLFWwindow *window = glfwCreateWindow(800, 600, "LearnOpenGL", NULL, NULL);
+    GLFWwindow *window = glfwCreateWindow(g_width, g_height, "LearnOpenGL", NULL, NULL);
     if (window == NULL) {
         printf("Failed to create GLFW window\n");
         glfwTerminate();
@@ -101,13 +108,14 @@ int main() {
 
     glm::vec3 particleColor = glm::vec3(0.0f, 1.0f, 1.0f);
     glm::vec3 backgroundColor = glm::vec3(0.0f, 0.0f, 0.0f);
-    shader.setVec3("particleColor", particleColor);
-    shader.setVec3("backgroundColor", backgroundColor);
 
-    float particleRadius = 0.5f;
-    shader.setFloat("particleRadius", particleRadius);
+    float particleRadius = 10.0f;
 
-    glm::vec2 position = glm::vec2(0.5f, 0.5f);
+    int particleAmount = 10;
+
+    core::ParticleManager particleManager(particleAmount);
+
+    glm::vec2 position = glm::vec2(g_width / 2, g_height / 2);
     core::Particle particle(position);
 
     double elapsedSecs;
@@ -116,30 +124,39 @@ int main() {
         processInput(window);
         glClear(GL_COLOR_BUFFER_BIT);
 
+        shader.setInt("screen.width", g_width);
+        shader.setInt("screen.height", g_height);
+
 
         ImGui_ImplOpenGL3_NewFrame();
         ImGui_ImplGlfw_NewFrame();
         ImGui::NewFrame();
 
         ImGui::Begin("Settings");
-        if (ImGui::TreeNode("Particle Settings")) {
-            ImGui::ColorEdit3("Particle Color", glm::value_ptr(particleColor));
-            ImGui::SliderFloat("Particle Radius", &particleRadius, 0.01f, 0.1f);
-
-            ImGui::TreePop();
-        }
-        if (ImGui::TreeNode("Particle Settings")) {
+        if (ImGui::TreeNode("General Settings")) {
             ImGui::ColorEdit3("Background Color", glm::value_ptr(backgroundColor));
 
             ImGui::TreePop();
             ImGui::Separator();
         }
+        if (ImGui::TreeNode("Particle Settings")) {
+            ImGui::ColorEdit3("Color", glm::value_ptr(particleColor));
+            ImGui::DragFloat2("Position", glm::value_ptr(particle.position), 1.0f);
+            ImGui::SliderFloat("Radius", &particleRadius, 1.0f, 100.0f);
+
+            ImGui::TreePop();
+        }
         ImGui::End();
 
+        shader.setVec3("particleColor", particleColor);
+        shader.setVec3("backgroundColor", backgroundColor);
+        shader.setFloat("particleRadius", particleRadius);
 
+        for (int i = 0; i < particleManager.particleAmount; i++) {
+            std::string index = "particles[" + std::to_string(i) + "].";
 
-        //shader.setVec2("particles[0].position", particle.position);
-        shader.setVec2("particlePosition", particle.position);
+            shader.setVec2(index + "position", particleManager.particlePositions[i]);
+        }
         glBindVertexArray(quadVAO);
         glDrawArrays(GL_TRIANGLES, 0, 6);
         glBindVertexArray(0);
