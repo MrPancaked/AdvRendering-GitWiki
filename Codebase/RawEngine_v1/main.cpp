@@ -20,6 +20,9 @@ double accumulatedTime = 0;
 int g_width = 800;
 int g_height = 600;
 
+int particleAmount = 1000;
+core::ParticleManager particleManager(particleAmount, g_width, g_height);
+
 void processInput(GLFWwindow *window) {
     if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS)
         glfwSetWindowShouldClose(window, true);
@@ -28,6 +31,9 @@ void processInput(GLFWwindow *window) {
 void framebuffer_size_callback(GLFWwindow *window, int width, int height) {
     g_width = width;
     g_height = height;
+
+    particleManager.horizontalBoundary = static_cast<float>(g_width);
+    particleManager.verticalBoundary = static_cast<float>(g_height);
 
     printf("width: %d, height: %d\n", g_width, g_height);
     glViewport(0, 0, width, height);
@@ -111,10 +117,10 @@ int main() {
 
     float particleRadius = 10.0f;
 
-    int particleAmount = 1000;
+
     shader.setInt("particleAmount", particleAmount);
 
-    core::ParticleManager particleManager(particleAmount, g_width, g_height);
+
 
     double elapsedSecs;
     double currentTime = glfwGetTime();
@@ -133,21 +139,33 @@ int main() {
         ImGui_ImplGlfw_NewFrame();
         ImGui::NewFrame();
 
+        ImGui::Begin("Information");
+        float density = particleManager.CalculateDensity(glm::vec2(g_width / 2, g_height / 2));
+        ImGui::Text("Screen Size: %d, %d", g_width, g_height);
+        ImGui::Text("density at centre = %f\n", density);
+        ImGui::Text("delta time = %f\n", deltaTime);
+        ImGui::End();
+
         ImGui::Begin("Settings");
         if (ImGui::TreeNode("General Settings")) {
             ImGui::ColorEdit3("Background Color", glm::value_ptr(backgroundColor));
+            ImGui::DragFloat("Time Step", &particleManager.timeStep, 0.01f, 0.0f, 10.0f);
+            ImGui::DragFloat("Gravity", &particleManager.gravity, 0.01f, 0.0f, 10.0f);
 
             ImGui::TreePop();
             ImGui::Separator();
         }
         if (ImGui::TreeNode("Particle Settings")) {
+            ImGui::SliderInt("Amount", &particleManager.particleAmount, 0, 1000);
             ImGui::ColorEdit3("Color", glm::value_ptr(particleColor));
-            ImGui::SliderFloat("Radius", &particleRadius, 1.0f, 100.0f);
+            ImGui::SliderFloat("Visual Radius", &particleRadius, 1.0f, 100.0f);
+            ImGui::SliderFloat("Smoothing Radius", &particleManager.smoothingRadius, 0.0f, 1000.0f);
 
             ImGui::TreePop();
         }
         ImGui::End();
 
+        shader.setInt("particleAmount", particleManager.particleAmount);
         shader.setVec3("particleColor", particleColor);
         shader.setVec3("backgroundColor", backgroundColor);
         shader.setFloat("particleRadius", particleRadius);
@@ -159,6 +177,8 @@ int main() {
 
             shader.setVec2(index + "position", particleManager.positions[i]);
         }
+
+
         glBindVertexArray(quadVAO);
         glDrawArrays(GL_TRIANGLES, 0, 6);
         glBindVertexArray(0);

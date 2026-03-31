@@ -12,26 +12,37 @@
 namespace core {
     class ParticleManager {
     public:
-        float timeStep = 1.0f / 1.0f;
+        float timeStep = 1.0f;
         float gravity = 0.0f;
+        float smoothingRadius = 100.0f;
+
         int particleAmount;
+
+        float horizontalBoundary;
+        float verticalBoundary;
+
+        std::random_device rd;
+
         std::vector<glm::vec2> positions;
         std::vector<glm::vec2> velocities;
 
-        ParticleManager(const int particleAmount, const int screenWidth, const int screenHeight) : particleAmount(particleAmount){
+        ParticleManager(const int particleAmount, const int& screenWidth, const int& screenHeight) : particleAmount(particleAmount), horizontalBoundary(static_cast<float>(screenWidth)), verticalBoundary(static_cast<float>(screenHeight)) {
             for (int i = 0; i < particleAmount; i++) {
 
                 std::random_device rd;
                 std::mt19937 gen(rd());
-                std::uniform_real_distribution<> widthDist(0.0f, screenWidth);
-                std::uniform_real_distribution<> heightDist(0.0f, screenHeight);
+                std::uniform_real_distribution<> widthDist(0.0f, horizontalBoundary);
+                std::uniform_real_distribution<> heightDist(0.0f, verticalBoundary);
 
                 positions.emplace_back(widthDist(gen), heightDist(gen));
                 velocities.emplace_back(0.0f, 0.0f);
             }
         }
 
-        void UpdateParticles(const float deltaTime);
+        void ChangeParticleAmount();
+        void UpdateParticles(float& deltaTime);
+        float SmoothingKernel(const float& radius, const float& distance);
+        float CalculateDensity(const glm::vec2& location);
     };
 } // core
 
