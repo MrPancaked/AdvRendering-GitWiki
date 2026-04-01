@@ -20,7 +20,7 @@ double accumulatedTime = 0;
 int g_width = 800;
 int g_height = 600;
 
-int particleAmount = 1000;
+int particleAmount = 100;
 core::ParticleManager particleManager(particleAmount, g_width, g_height);
 
 void processInput(GLFWwindow *window) {
@@ -140,9 +140,9 @@ int main() {
         ImGui::NewFrame();
 
         ImGui::Begin("Information");
-        float density = particleManager.CalculateDensity(glm::vec2(g_width / 2, g_height / 2));
+        float density = particleManager.CalculateDensity(particleManager.positions[0]);
         ImGui::Text("Screen Size: %d, %d", g_width, g_height);
-        ImGui::Text("density at centre = %f\n", density);
+        ImGui::Text("density at particle1 = %f\n", density);
         ImGui::Text("delta time = %f\n", deltaTime);
         ImGui::End();
 

@@ -15,6 +15,8 @@ namespace core {
         float timeStep = 1.0f;
         float gravity = 0.0f;
         float smoothingRadius = 100.0f;
+        float targetDensity = 0.01f;
+        float pressureMultiplier = 0.00f;
 
         int particleAmount;
 
@@ -25,6 +27,7 @@ namespace core {
 
         std::vector<glm::vec2> positions;
         std::vector<glm::vec2> velocities;
+        std::vector<float> densities;
 
         ParticleManager(const int particleAmount, const int& screenWidth, const int& screenHeight) : particleAmount(particleAmount), horizontalBoundary(static_cast<float>(screenWidth)), verticalBoundary(static_cast<float>(screenHeight)) {
             for (int i = 0; i < particleAmount; i++) {
@@ -36,13 +39,18 @@ namespace core {
 
                 positions.emplace_back(widthDist(gen), heightDist(gen));
                 velocities.emplace_back(0.0f, 0.0f);
+                densities.emplace_back(0.0f);
             }
         }
 
         void ChangeParticleAmount();
         void UpdateParticles(float& deltaTime);
-        float SmoothingKernel(const float& radius, const float& distance);
-        float CalculateDensity(const glm::vec2& location);
+        void SolveCollisions();
+        float SmoothingKernel(const float& radius, const float& distance) const;
+        float DensityToPressure(const float& density) const;
+        float CalculateDensity(const glm::vec2& location) const;
+        glm::vec2 CalculatePressureGradient(const glm::vec2& location) const;
+
     };
 } // core
 
