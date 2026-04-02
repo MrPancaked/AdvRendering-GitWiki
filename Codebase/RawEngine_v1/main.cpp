@@ -134,19 +134,20 @@ int main() {
         shader.setInt("screen.width", g_width);
         shader.setInt("screen.height", g_height);
 
+        // update all particles
         particleManager.UpdateParticles(deltaTime);
 
+        // updating shader with particle information
         shader.setInt("particleAmount", particleManager.particleAmount);
         shader.setVec3("particleColor", particleColor);
         shader.setVec3("backgroundColor", backgroundColor);
         shader.setFloat("particleRadius", particleRadius);
-
         for (int i = 0; i < particleManager.particleAmount; i++) {
-            //printf("particleamount = %d\n", particleManager.particleAmount);
             std::string index = "particles[" + std::to_string(i) + "].";
             shader.setVec2(index + "position", particleManager.positions[i]);
         }
 
+        // do everything ImGui
         ImGui_ImplOpenGL3_NewFrame();
         ImGui_ImplGlfw_NewFrame();
         ImGui::NewFrame();
