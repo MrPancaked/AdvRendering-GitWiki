@@ -14,9 +14,9 @@ namespace core {
     public:
         float timeStep = 1.0f;
         float gravity = 0.0f;
-        float smoothingRadius = 100.0f;
+        float smoothingRadius = 10.0f;
         float targetDensity = 0.01f;
-        float pressureMultiplier = 0.00f;
+        float pressureMultiplier = 0.001f;
 
         int particleAmount;
 
@@ -47,6 +47,7 @@ namespace core {
         void UpdateParticles(float& deltaTime);
         void SolveCollisions();
         float SmoothingKernel(const float& radius, const float& distance) const;
+        float SmoothingKernelDerivative(const float& radius, const float& distance) const;
         float DensityToPressure(const float& density) const;
         float CalculateDensity(const glm::vec2& location) const;
         glm::vec2 CalculatePressureGradient(const glm::vec2& location) const;

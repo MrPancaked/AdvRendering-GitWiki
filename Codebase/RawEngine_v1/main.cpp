@@ -20,7 +20,7 @@ double accumulatedTime = 0;
 int g_width = 800;
 int g_height = 600;
 
-int particleAmount = 100;
+int particleAmount = 10;
 core::ParticleManager particleManager(particleAmount, g_width, g_height);
 
 void processInput(GLFWwindow *window) {
@@ -134,15 +134,30 @@ int main() {
         shader.setInt("screen.width", g_width);
         shader.setInt("screen.height", g_height);
 
+        particleManager.UpdateParticles(deltaTime);
+
+        shader.setInt("particleAmount", particleManager.particleAmount);
+        shader.setVec3("particleColor", particleColor);
+        shader.setVec3("backgroundColor", backgroundColor);
+        shader.setFloat("particleRadius", particleRadius);
+
+        for (int i = 0; i < particleManager.particleAmount; i++) {
+            //printf("particleamount = %d\n", particleManager.particleAmount);
+            std::string index = "particles[" + std::to_string(i) + "].";
+            shader.setVec2(index + "position", particleManager.positions[i]);
+        }
 
         ImGui_ImplOpenGL3_NewFrame();
         ImGui_ImplGlfw_NewFrame();
         ImGui::NewFrame();
 
         ImGui::Begin("Information");
-        float density = particleManager.CalculateDensity(particleManager.positions[0]);
+
         ImGui::Text("Screen Size: %d, %d", g_width, g_height);
-        ImGui::Text("density at particle1 = %f\n", density);
+        if (particleManager.particleAmount > 0) {
+            float density = particleManager.CalculateDensity(particleManager.positions[0]);
+            ImGui::Text("density at particle1 = %f\n", density);
+        }
         ImGui::Text("delta time = %f\n", deltaTime);
         ImGui::End();
 
@@ -151,6 +166,8 @@ int main() {
             ImGui::ColorEdit3("Background Color", glm::value_ptr(backgroundColor));
             ImGui::DragFloat("Time Step", &particleManager.timeStep, 0.01f, 0.0f, 10.0f);
             ImGui::DragFloat("Gravity", &particleManager.gravity, 0.01f, 0.0f, 10.0f);
+            ImGui::DragFloat("PressureMultiplier", &particleManager.pressureMultiplier, 0.001f, 0.0f, 1.0f);
+            ImGui::DragFloat("Target Density", &particleManager.targetDensity, 0.01f, 0.0f, 1.0f);
 
             ImGui::TreePop();
             ImGui::Separator();
@@ -164,20 +181,6 @@ int main() {
             ImGui::TreePop();
         }
         ImGui::End();
-
-        shader.setInt("particleAmount", particleManager.particleAmount);
-        shader.setVec3("particleColor", particleColor);
-        shader.setVec3("backgroundColor", backgroundColor);
-        shader.setFloat("particleRadius", particleRadius);
-
-        particleManager.UpdateParticles(deltaTime);
-
-        for (int i = 0; i < particleManager.particleAmount; i++) {
-            std::string index = "particles[" + std::to_string(i) + "].";
-
-            shader.setVec2(index + "position", particleManager.positions[i]);
-        }
-
 
         glBindVertexArray(quadVAO);
         glDrawArrays(GL_TRIANGLES, 0, 6);
