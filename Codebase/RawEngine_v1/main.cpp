@@ -167,8 +167,8 @@ int main() {
             ImGui::ColorEdit3("Background Color", glm::value_ptr(backgroundColor));
             ImGui::DragFloat("Time Step", &particleManager.timeStep, 0.01f, 0.0f, 10.0f);
             ImGui::DragFloat("Gravity", &particleManager.gravity, 0.01f, 0.0f, 10.0f);
-            ImGui::DragFloat("PressureMultiplier", &particleManager.pressureMultiplier, 0.001f, 0.0f, 1.0f);
-            ImGui::DragFloat("Target Density", &particleManager.targetDensity, 0.01f, 0.0f, 1.0f);
+            ImGui::DragFloat("PressureMultiplier", &particleManager.pressureMultiplier, 0.01f, 0.0f, 10.0f);
+            ImGui::DragFloat("Target Density", &particleManager.targetDensity, 0.01f, 0.0f, 0.25f);
 
             ImGui::TreePop();
             ImGui::Separator();

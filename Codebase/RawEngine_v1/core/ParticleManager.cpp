@@ -36,15 +36,20 @@ namespace core {
         // calling this every frame is okay since std::vector<>.resize only does anything when size actually changes.
         ChangeParticleAmount();
 
+        //update densities
         for (int i = 0; i < particleAmount; i++) {
             densities[i] = CalculateDensity(positions[i]);
         }
 
-        for (int i = 0; i < particleAmount; i++) {
-            glm::vec2 gravityComp = glm::vec2(0.0f, -1.0f) * gravity  * deltaTime;
-            glm::vec2 pressureComp = CalculatePressureGradient(positions[i]);
+        //add gravity
+        glm::vec2 gravityComp = glm::vec2(0.0f, -1.0f) * gravity  * deltaTime;
 
-            velocities[i] += gravityComp + pressureComp * pressureMultiplier;
+
+        for (int i = 0; i < particleAmount; i++) {
+
+            glm::vec2 pressure = CalculatePressureGradient(positions[i]);
+            glm::vec2 pressureComp = pressure * pressureMultiplier / densities[i];
+            velocities[i] += pressureComp + gravityComp;
             positions[i] += velocities[i] * timeStep;
             //printf("pressureComp%d: %f, %f\n", i, pressureComp.x, pressureComp.y);
             //printf("velocity%d: %f, %f\n", i, velocities[i].x, velocities[i].y);
@@ -83,7 +88,9 @@ namespace core {
     }
     float ParticleManager::SmoothingKernelDerivative(const float& radius, const float& distance) const{
         if (distance > radius) {return 0.0f;}
-        return (2.0f * distance - 2.0f * radius);
+        //return (2.0f * distance - 2.0f * radius);
+        return -6.0f * (radius-distance) / (2.0f * glm::pi<float>() * glm::pow(smoothingRadius, 3.0f));
+
         //return (4.0f * glm::pi<float>() * glm::pow(smoothingRadius, 3.0f) / 3.0f) * (distance - radius);
         //return ((4.0f * glm::pi<float>() * glm::pow(smoothingRadius, 3.0f) * distance) / 3.0f) - ((4.0f * glm::pi<float>() * glm::pow(smoothingRadius, 4.0f)) / 3.0f);
     }
@@ -115,7 +122,8 @@ namespace core {
             glm::vec2 direction = (positions[i] - location) / distance;
             float slope = SmoothingKernelDerivative(smoothingRadius, distance);
             float density = densities[i];
-            pressureGradient += DensityToPressure(density) * direction * -slope * 1.0f / density; //1.0f is the mass of the particle
+            pressureGradient += DensityToPressure(density) * direction * slope * 1.0f / density; //1.0f is the mass of the particle
+            // pressureGradient += direction * -slope * 1.0f / density; //1.0f is the mass of the particle
             //printf("slope at distance%f: %f\n", distance, slope);
         }
         return pressureGradient;

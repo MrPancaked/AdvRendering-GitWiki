@@ -14,9 +14,9 @@ namespace core {
     public:
         float timeStep = 1.0f;
         float gravity = 0.0f;
-        float smoothingRadius = 10.0f;
+        float smoothingRadius = 20.0f;
         float targetDensity = 0.01f;
-        float pressureMultiplier = 0.001f;
+        float pressureMultiplier = 1.0f;
 
         int particleAmount;
 
