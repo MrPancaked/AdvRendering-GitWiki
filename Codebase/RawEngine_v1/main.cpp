@@ -20,12 +20,33 @@ double accumulatedTime = 0;
 int g_width = 800;
 int g_height = 600;
 
-int particleAmount = 10;
+double xpos, ypos;
+
+int particleAmount = 200;
 core::ParticleManager particleManager(particleAmount, g_width, g_height);
 
 void processInput(GLFWwindow *window) {
     if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS)
         glfwSetWindowShouldClose(window, true);
+}
+
+void mouse_button_callback(GLFWwindow* window, int button, int action, int mods)
+{
+
+    printf("cursor position %f, %f\n", xpos, ypos);
+
+    if (button == GLFW_MOUSE_BUTTON_LEFT && action == GLFW_PRESS){
+        particleManager.inputForceStrength = 20.0f;
+    }
+    else if (button == GLFW_MOUSE_BUTTON_RIGHT && action == GLFW_PRESS){
+        particleManager.inputForceStrength = -20.0f;
+    }
+    else if (button == GLFW_MOUSE_BUTTON_LEFT && action == GLFW_RELEASE) {
+        particleManager.inputForceStrength = 0.0f;
+    }
+    else if (button == GLFW_MOUSE_BUTTON_RIGHT && action == GLFW_RELEASE) {
+        particleManager.inputForceStrength = 0.0f;
+    }
 }
 
 void framebuffer_size_callback(GLFWwindow *window, int width, int height) {
@@ -57,6 +78,7 @@ int main() {
     glfwMakeContextCurrent(window);
 
     glfwSetFramebufferSizeCallback(window, framebuffer_size_callback);
+    glfwSetMouseButtonCallback(window, mouse_button_callback);
 
     if (!gladLoadGLLoader((GLADloadproc) glfwGetProcAddress)) {
         printf("Failed to initialize GLAD\n");
@@ -128,6 +150,11 @@ int main() {
     float deltaTime = 0.0f;
     while (!glfwWindowShouldClose(window)) {
         clock_t begin = clock();
+
+        glfwGetCursorPos(window, &xpos, &ypos);
+        ypos = (ypos - g_height) * -1.0f;
+        particleManager.mousePos = glm::vec2(xpos, ypos);
+
         processInput(window);
         glClear(GL_COLOR_BUFFER_BIT);
 
@@ -159,6 +186,7 @@ int main() {
             float density = particleManager.CalculateDensity(particleManager.positions[0]);
             ImGui::Text("density at particle1 = %f\n", density);
         }
+        ImGui::Text("Total run time: %f\n", accumulatedTime);
         ImGui::Text("delta time = %f\n", deltaTime);
         ImGui::End();
 
@@ -167,8 +195,9 @@ int main() {
             ImGui::ColorEdit3("Background Color", glm::value_ptr(backgroundColor));
             ImGui::DragFloat("Time Step", &particleManager.timeStep, 0.01f, 0.0f, 10.0f);
             ImGui::DragFloat("Gravity", &particleManager.gravity, 0.01f, 0.0f, 10.0f);
-            ImGui::DragFloat("PressureMultiplier", &particleManager.pressureMultiplier, 0.01f, 0.0f, 10.0f);
-            ImGui::DragFloat("Target Density", &particleManager.targetDensity, 0.01f, 0.0f, 0.25f);
+            ImGui::DragFloat("Collision Damping", &particleManager.collisionDamping, 0.01, 0.0f, 1.0f);
+            ImGui::DragFloat("PressureMultiplier", &particleManager.pressureMultiplier, 0.01f, 0.0f, 100.0f);
+            ImGui::DragFloat("Target Density", &particleManager.targetDensity, 0.001f, 0.0f, 0.25f);
 
             ImGui::TreePop();
             ImGui::Separator();

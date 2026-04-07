@@ -14,18 +14,26 @@ namespace core {
     public:
         float timeStep = 1.0f;
         float gravity = 0.0f;
-        float smoothingRadius = 20.0f;
-        float targetDensity = 0.01f;
-        float pressureMultiplier = 1.0f;
+        float smoothingRadius = 40.0f;
+        float targetDensity = 0.0f;
+        float pressureMultiplier = 1000.0f;
+        float collisionDamping = 0.5f;
 
         int particleAmount;
 
         float horizontalBoundary;
         float verticalBoundary;
 
+        float inputForceRadius = 150.0f;
+        float inputForceStrength = 0.0f;
+
+        glm::vec2 mousePos;
+
         std::random_device rd;
 
+
         std::vector<glm::vec2> positions;
+        std::vector<glm::vec2> predictedPositions;
         std::vector<glm::vec2> velocities;
         std::vector<float> densities;
 
@@ -38,6 +46,7 @@ namespace core {
                 std::uniform_real_distribution<> heightDist(0.0f, verticalBoundary);
 
                 positions.emplace_back(widthDist(gen), heightDist(gen));
+                predictedPositions.emplace_back(0.0f);
                 velocities.emplace_back(0.0f, 0.0f);
                 densities.emplace_back(0.0f);
             }
@@ -50,7 +59,9 @@ namespace core {
         float SmoothingKernelDerivative(const float& radius, const float& distance) const;
         float DensityToPressure(const float& density) const;
         float CalculateDensity(const glm::vec2& location) const;
-        glm::vec2 CalculatePressureGradient(const glm::vec2& location) const;
+        float CalculateSharedPressure(const float& density1, const float& density2) const;
+        glm::vec2 ApplyForce(const glm::vec2& inputPos, const int& particleIndex , const float& radius, const float& strength);
+        glm::vec2 CalculatePressureGradient(const int& particleIndex) const;
 
     };
 } // core
