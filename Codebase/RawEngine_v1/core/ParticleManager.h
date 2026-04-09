@@ -13,13 +13,13 @@ namespace core {
     class ParticleManager {
     public:
         float timeStep = 1.0f;
-        float gravity = 0.0f;
+        float gravity = 2.5f;
         float smoothingRadius = 40.0f;
         float targetDensity = 0.0f;
-        float pressureMultiplier = 500.0f;
+        float pressureMultiplier = 750.0f;
         float collisionDamping = 0.5f;
         float viscosityStrength = 1.0f;
-        float boundaryForceStrength = 100.0f;
+        float boundaryForceStrength = 1000.0f;
         float boundaryForceRange = 60.0f;
 
         int particleAmount;
