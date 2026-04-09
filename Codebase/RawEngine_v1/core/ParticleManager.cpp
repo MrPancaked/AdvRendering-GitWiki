@@ -9,14 +9,50 @@
 #include <glm/ext/scalar_constants.hpp>
 
 namespace core {
+
+
+    void ParticleManager::UpdateParticles(const float& deltaTime) {
+        // calling this every frame is okay since std::vector<>.resize only does anything when size actually changes.
+        ChangeParticleAmount();
+
+        //predict positions
+        for (int i = 0; i < particleAmount; i++) {
+            predictedPositions[i] = positions[i] + velocities[i] * timeStep * 1.0f / 120.0f;
+        }
+        //update densities
+        for (int i = 0; i < particleAmount; i++) {
+            densities[i] = CalculateDensity(predictedPositions[i]);
+        }
+        //add gravity
+        glm::vec2 gravityComp = glm::vec2(0.0f, -1.0f) * gravity;
+
+        //final calculations
+        for (int i = 0; i < particleAmount; i++) {
+
+            glm::vec2 pressure = CalculatePressureGradient(i);
+            glm::vec2 pressureComp = pressure * pressureMultiplier / densities[i];
+
+            glm::vec2 inputForceComp = glm::vec2(0.0f);
+            if (applyInputForce) inputForceComp = ApplyInputForce(mousePos, i, inputForceRadius, inputForceStrength);
+
+            glm::vec2 boundaryForceComp = CalculateBoundaryForces(i);
+
+            velocities[i] +=  (pressureComp + gravityComp + inputForceComp + boundaryForceComp);
+            positions[i] += velocities[i] * timeStep * deltaTime;
+            //printf("pressureComp%d: %f, %f\n", i, pressureComp.x, pressureComp.y);
+            //printf("velocity%d: %f, %f\n", i, velocities[i].x, velocities[i].y);
+        }
+        SolveCollisions();
+    }
+
     void ParticleManager::ChangeParticleAmount() {
         if (particleAmount == positions.size()) {
             return;
         }
         if (particleAmount > positions.size()) {
             std::mt19937 gen(rd());
-            std::uniform_real_distribution<> widthDist(0.0f, horizontalBoundary);
-            std::uniform_real_distribution<> heightDist(0.0f, verticalBoundary);
+            std::uniform_real_distribution<> widthDist(0.0f, horizontalBoundary - boundaryForceRange);
+            std::uniform_real_distribution<> heightDist(0.0f, verticalBoundary - boundaryForceRange);
 
             int increaseAmount =  particleAmount - positions.size();
             for (int i = 0; i < increaseAmount; i++) {
@@ -34,52 +70,17 @@ namespace core {
         }
     }
 
-    void ParticleManager::UpdateParticles(float& deltaTime) {
-
-        // calling this every frame is okay since std::vector<>.resize only does anything when size actually changes.
-        ChangeParticleAmount();
-
-
-
-        //predict positions
-        for (int i = 0; i < particleAmount; i++) {
-            predictedPositions[i] = positions[i] + velocities[i] * timeStep * deltaTime;
-        }
-
-        //update densities
-        for (int i = 0; i < particleAmount; i++) {
-            densities[i] = CalculateDensity(predictedPositions[i]);
-        }
-
-        //add gravity
-        glm::vec2 gravityComp = glm::vec2(0.0f, -1.0f) * gravity;
-
-
-        for (int i = 0; i < particleAmount; i++) {
-
-            glm::vec2 pressure = CalculatePressureGradient(i);
-            glm::vec2 pressureComp = pressure * pressureMultiplier / densities[i];
-            glm::vec2 inputForceComp = ApplyForce(mousePos, i, inputForceRadius, inputForceStrength);
-
-            velocities[i] +=  pressureComp + gravityComp + inputForceComp;
-            positions[i] += velocities[i] * timeStep * deltaTime;
-            //printf("pressureComp%d: %f, %f\n", i, pressureComp.x, pressureComp.y);
-            //printf("velocity%d: %f, %f\n", i, velocities[i].x, velocities[i].y);
-        }
-        SolveCollisions();
-    }
-
     void ParticleManager::SolveCollisions() {
         for (int i = 0; i < particleAmount; i++) {
             glm::vec2& position = positions[i];
             glm::vec2& velocity = velocities[i];
             if (position.x < 0) {
                 position.x = 0;
-                velocity.x = -velocity.x;
+                velocity.x = -1 * collisionDamping;
             }
             else if (position.x > horizontalBoundary) {
                 position.x = horizontalBoundary;
-                velocity.x = -velocity.x;
+                velocity.x = -1 * collisionDamping;
             }
             if (position.y < 0) {
                 position.y = 0;
@@ -133,14 +134,17 @@ namespace core {
         glm::vec2 pressureGradient = glm::vec2(0.0f, 0.0f);
 
         for (int i = 0; i < particleAmount; i++) {
-
-            float distance = glm::distance(predictedPositions[i], predictedPositions[particleIndex]);
             //skip over itself
-            if (distance < 1e-6f) {continue;} // this might cause particles to lose energy but it almost never happens so who cares
+            if (particleIndex == i) {continue;}
+            float distance = glm::distance(predictedPositions[i], predictedPositions[particleIndex]);
             glm::vec2 direction = (predictedPositions[i] - predictedPositions[particleIndex]) / distance;
+            if (distance == 0.0f) {
+                direction = glm::normalize(predictedPositions[i] - positions[particleIndex]);
+            }
             float slope = SmoothingKernelDerivative(smoothingRadius, distance);
             float density = densities[i];
             float sharedPressure = CalculateSharedPressure(density, densities[particleIndex]);
+
             pressureGradient += sharedPressure * direction * slope * 1.0f / density; //1.0f is the mass of the particle
             // pressureGradient += direction * -slope * 1.0f / density; //1.0f is the mass of the particle
             //printf("slope at distance%f: %f\n", distance, slope);
@@ -148,16 +152,52 @@ namespace core {
         return pressureGradient;
     }
 
-    glm::vec2 ParticleManager::ApplyForce(const glm::vec2& inputPos, const int& particleIndex , const float& radius, const float& strength) {
+    glm::vec2 ParticleManager::ApplyInputForce(const glm::vec2& inputPos, const int& particleIndex , const float& radius, const float& strength) {
         glm::vec2 force = glm::vec2(0.0f);
         glm::vec2 offset = inputPos - positions[particleIndex];
         glm::vec2 direction = glm::normalize(offset);
         float distance = glm::length(offset);
         if (distance < radius) {
             float centreForce = 1 - distance / radius;
-            //force = (direction * strength - velocities[particleIndex]) * centreForce;
-            force = (direction * strength) * centreForce;
+            force = direction  * centreForce * strength - 0.01f * velocities[particleIndex];
+            //force = (direction * strength) * centreForce;
         }
+
+        return force;
+    }
+
+    glm::vec2 ParticleManager::CalculateViscosityForce(const int& particleIndex) {
+        glm::vec2 force = glm::vec2(0.0f);
+        glm::vec2 position = positions[particleIndex];
+
+        return force;
+    }
+
+    glm::vec2 ParticleManager::CalculateBoundaryForces(const int& particleIndex) {
+
+        glm::vec2 direction = glm::vec2(0.0f);
+        float distance = 0.0f;
+
+        if (positions[particleIndex].x <= boundaryForceRange) {
+            distance = positions[particleIndex].x;
+            direction = glm::vec2(1.0f, 0.0f);
+        }
+        else if (positions[particleIndex].x >= horizontalBoundary - boundaryForceRange) {
+            distance = horizontalBoundary - positions[particleIndex].x;
+            direction = glm::vec2(-1.0f, 0.0f);
+        }
+        if (positions[particleIndex].y <= boundaryForceRange) {
+            distance = positions[particleIndex].y;
+            direction = glm::vec2(0.0f, 1.0f);
+        }
+        else if (positions[particleIndex].y >= verticalBoundary - boundaryForceRange) {
+            distance = verticalBoundary - positions[particleIndex].y ;
+            direction = glm::vec2(0.0f, -1.0f);
+        }
+
+        float slope = -SmoothingKernelDerivative(boundaryForceRange, distance);
+        float density = densities[particleIndex];
+        glm::vec2 force = direction * boundaryForceStrength * DensityToPressure(density) * slope / density;
 
         return force;
     }

@@ -32,20 +32,23 @@ void processInput(GLFWwindow *window) {
 
 void mouse_button_callback(GLFWwindow* window, int button, int action, int mods)
 {
-
     printf("cursor position %f, %f\n", xpos, ypos);
 
     if (button == GLFW_MOUSE_BUTTON_LEFT && action == GLFW_PRESS){
         particleManager.inputForceStrength = 20.0f;
+        particleManager.applyInputForce = true;
     }
     else if (button == GLFW_MOUSE_BUTTON_RIGHT && action == GLFW_PRESS){
         particleManager.inputForceStrength = -20.0f;
+        particleManager.applyInputForce = true;
     }
     else if (button == GLFW_MOUSE_BUTTON_LEFT && action == GLFW_RELEASE) {
         particleManager.inputForceStrength = 0.0f;
+        particleManager.applyInputForce = false;
     }
     else if (button == GLFW_MOUSE_BUTTON_RIGHT && action == GLFW_RELEASE) {
         particleManager.inputForceStrength = 0.0f;
+        particleManager.applyInputForce = false;
     }
 }
 
@@ -134,7 +137,8 @@ int main() {
 
     shader.use();
 
-    glm::vec3 particleColor = glm::vec3(0.0f, 1.0f, 1.0f);
+    glm::vec3 particleColor1 = glm::vec3(0.0f, 1.0f, 1.0f);
+    glm::vec3 particleColor2 = glm::vec3(1.0f, 0.0f, 0.0f);
     glm::vec3 backgroundColor = glm::vec3(0.0f, 0.0f, 0.0f);
 
     float particleRadius = 10.0f;
@@ -166,12 +170,14 @@ int main() {
 
         // updating shader with particle information
         shader.setInt("particleAmount", particleManager.particleAmount);
-        shader.setVec3("particleColor", particleColor);
+        shader.setVec3("particleColor1", particleColor1);
+        shader.setVec3("particleColor2", particleColor2);
         shader.setVec3("backgroundColor", backgroundColor);
         shader.setFloat("particleRadius", particleRadius);
         for (int i = 0; i < particleManager.particleAmount; i++) {
             std::string index = "particles[" + std::to_string(i) + "].";
             shader.setVec2(index + "position", particleManager.positions[i]);
+            shader.setVec2(index + "velocity", particleManager.velocities[i]);
         }
 
         // do everything ImGui
@@ -195,7 +201,8 @@ int main() {
             ImGui::ColorEdit3("Background Color", glm::value_ptr(backgroundColor));
             ImGui::DragFloat("Time Step", &particleManager.timeStep, 0.01f, 0.0f, 10.0f);
             ImGui::DragFloat("Gravity", &particleManager.gravity, 0.01f, 0.0f, 10.0f);
-            ImGui::DragFloat("Collision Damping", &particleManager.collisionDamping, 0.01, 0.0f, 1.0f);
+            ImGui::DragFloat("Collision Damping", &particleManager.collisionDamping, 0.01f, 0.0f, 1.0f);
+            ImGui::DragFloat("Boundary Force Strength", &particleManager.boundaryForceStrength, 0.1f, 0.0f, 1000.0f);
             ImGui::DragFloat("PressureMultiplier", &particleManager.pressureMultiplier, 0.01f, 0.0f, 100.0f);
             ImGui::DragFloat("Target Density", &particleManager.targetDensity, 0.001f, 0.0f, 0.25f);
 
@@ -204,7 +211,8 @@ int main() {
         }
         if (ImGui::TreeNode("Particle Settings")) {
             ImGui::SliderInt("Amount", &particleManager.particleAmount, 0, 1000);
-            ImGui::ColorEdit3("Color", glm::value_ptr(particleColor));
+            ImGui::ColorEdit3("Color1", glm::value_ptr(particleColor1));
+            ImGui::ColorEdit3("Color2", glm::value_ptr(particleColor2));
             ImGui::SliderFloat("Visual Radius", &particleRadius, 1.0f, 100.0f);
             ImGui::SliderFloat("Smoothing Radius", &particleManager.smoothingRadius, 0.0f, 1000.0f);
 

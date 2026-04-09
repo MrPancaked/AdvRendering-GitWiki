@@ -16,21 +16,24 @@ namespace core {
         float gravity = 0.0f;
         float smoothingRadius = 40.0f;
         float targetDensity = 0.0f;
-        float pressureMultiplier = 1000.0f;
+        float pressureMultiplier = 500.0f;
         float collisionDamping = 0.5f;
+        float viscosityStrength = 1.0f;
+        float boundaryForceStrength = 100.0f;
+        float boundaryForceRange = 60.0f;
 
         int particleAmount;
 
         float horizontalBoundary;
         float verticalBoundary;
 
+        bool applyInputForce = false;
         float inputForceRadius = 150.0f;
         float inputForceStrength = 0.0f;
 
         glm::vec2 mousePos;
 
         std::random_device rd;
-
 
         std::vector<glm::vec2> positions;
         std::vector<glm::vec2> predictedPositions;
@@ -53,14 +56,16 @@ namespace core {
         }
 
         void ChangeParticleAmount();
-        void UpdateParticles(float& deltaTime);
+        void UpdateParticles(const float& deltaTime);
         void SolveCollisions();
         float SmoothingKernel(const float& radius, const float& distance) const;
         float SmoothingKernelDerivative(const float& radius, const float& distance) const;
         float DensityToPressure(const float& density) const;
         float CalculateDensity(const glm::vec2& location) const;
         float CalculateSharedPressure(const float& density1, const float& density2) const;
-        glm::vec2 ApplyForce(const glm::vec2& inputPos, const int& particleIndex , const float& radius, const float& strength);
+        glm::vec2 ApplyInputForce(const glm::vec2& inputPos, const int& particleIndex , const float& radius, const float& strength);
+        glm::vec2 CalculateViscosityForce(const int& particleIndex);
+        glm::vec2 CalculateBoundaryForces(const int& particleIndex);
         glm::vec2 CalculatePressureGradient(const int& particleIndex) const;
 
     };
