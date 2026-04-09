@@ -27,16 +27,13 @@ void main()
 {
     // this way the particle makes use of screen pixel coordinates instead of texcoords. makes sure particles aren't affected by screensize.
     vec2 screenCoords = vec2(TexCoords.x * screen.width, TexCoords.y * screen.height);
-
-
+    FragColor = vec4(backgroundColor, 1);
     for(int i = 0; i < particleAmount; i++) // dont go over every particle in particles[] since that would create imaginary particles at 0.0, 0.0
     {
         if (length(particles[i].position - screenCoords) < particleRadius){ // if frag is in radius of a particle
-            vec3 lerpedColor = mix(particleColor1, particleColor2, length(particles[i].velocity) / 200.0f);
+            vec3 lerpedColor = mix(particleColor1, particleColor2, length(particles[i].velocity) / 200.0f); // lerp color based on the particles velocity
             FragColor = vec4(lerpedColor, 1);
             break;
         }
-
-        FragColor = vec4(backgroundColor, 1);
     }
 }

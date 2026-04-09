@@ -67,7 +67,6 @@ namespace core {
         glm::vec2 CalculateViscosityForce(const int& particleIndex);
         glm::vec2 CalculateBoundaryForces(const int& particleIndex);
         glm::vec2 CalculatePressureGradient(const int& particleIndex) const;
-
     };
 } // core
 
