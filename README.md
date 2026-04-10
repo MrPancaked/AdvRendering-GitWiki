@@ -1,2 +1,2 @@
-# AdvRendering-GitWiki for René Hammink
-This is GitWiki repo for the advanced rendering project in which I create a 2D rigidbody system
+# 2D Particle Fuild Simulation (SPH)
+Please check out the Wiki page in the top bar for details about the implementation, benchmarks, tests, analysis and research
