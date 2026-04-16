@@ -199,8 +199,8 @@ int main() {
         ImGui::Begin("Settings");
         if (ImGui::TreeNode("General Settings")) {
             ImGui::ColorEdit3("Background Color", glm::value_ptr(backgroundColor));
-            ImGui::DragFloat("Time Step", &particleManager.timeStep, 0.01f, 0.0f, 10.0f);
             ImGui::DragFloat("Gravity", &particleManager.gravity, 0.01f, 0.0f, 10.0f);
+            ImGui::DragFloat("Mass", &particleManager.mass, 0.01f, 0.0f, 10.0f);
             ImGui::DragFloat("Collision Damping", &particleManager.collisionDamping, 0.01f, 0.0f, 1.0f);
             ImGui::DragFloat("Boundary Force Strength", &particleManager.boundaryForceStrength, 0.1f, 0.0f, 1000.0f);
             ImGui::DragFloat("PressureMultiplier", &particleManager.pressureMultiplier, 0.01f, 0.0f, 100.0f);

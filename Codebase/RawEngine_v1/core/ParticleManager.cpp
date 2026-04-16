@@ -17,7 +17,7 @@ namespace core {
 
         //predict positions
         for (int i = 0; i < particleAmount; i++) {
-            predictedPositions[i] = positions[i] + velocities[i] * timeStep * 1.0f / 120.0f;
+            predictedPositions[i] = positions[i] + velocities[i] * 1.0f / 120.0f;
         }
         //update densities
         for (int i = 0; i < particleAmount; i++) {
@@ -35,10 +35,10 @@ namespace core {
             glm::vec2 inputForceComp = glm::vec2(0.0f);
             if (applyInputForce) inputForceComp = ApplyInputForce(mousePos, i, inputForceRadius, inputForceStrength);
 
-            glm::vec2 boundaryForceComp = CalculateBoundaryForces(i);
+            glm::vec2 boundaryForceComp = CalculateBoundaryForces(i) * pressureMultiplier / densities[i];
 
             velocities[i] +=  (pressureComp + gravityComp + inputForceComp + boundaryForceComp);
-            positions[i] += velocities[i] * timeStep * deltaTime;
+            positions[i] += velocities[i] * deltaTime;
             //printf("pressureComp%d: %f, %f\n", i, pressureComp.x, pressureComp.y);
             //printf("velocity%d: %f, %f\n", i, velocities[i].x, velocities[i].y);
         }
@@ -76,11 +76,11 @@ namespace core {
             glm::vec2& velocity = velocities[i];
             if (position.x < 0) {
                 position.x = 0;
-                velocity.x = -1 * collisionDamping;
+                velocity.x *= -1 * collisionDamping;
             }
             else if (position.x > horizontalBoundary) {
                 position.x = horizontalBoundary;
-                velocity.x = -1 * collisionDamping;
+                velocity.x *= -1 * collisionDamping;
             }
             if (position.y < 0) {
                 position.y = 0;
@@ -96,13 +96,13 @@ namespace core {
 
         if (distance > radius) {return 0.0f;}
         //volume of smoothing kernel
-        float volume = 2.0f * glm::pi<float>() * glm::pow(smoothingRadius, 3.0f) / 3.0f;
+        float volume = glm::pi<float>() * glm::pow(radius, 4.0f) / 12.0f;
         return (radius - distance) * (radius - distance) / volume;
     }
     float ParticleManager::SmoothingKernelDerivative(const float& radius, const float& distance) const{
         if (distance > radius) {return 0.0f;}
         //return (2.0f * distance - 2.0f * radius);
-        return -6.0f * (radius-distance) / (2.0f * glm::pi<float>() * glm::pow(smoothingRadius, 3.0f));
+        return -12.0f * (radius-distance) / (glm::pi<float>() * glm::pow(radius, 4.0f));
 
         //return (4.0f * glm::pi<float>() * glm::pow(smoothingRadius, 3.0f) / 3.0f) * (distance - radius);
         //return ((4.0f * glm::pi<float>() * glm::pow(smoothingRadius, 3.0f) * distance) / 3.0f) - ((4.0f * glm::pi<float>() * glm::pow(smoothingRadius, 4.0f)) / 3.0f);
@@ -110,10 +110,9 @@ namespace core {
 
     float ParticleManager::CalculateDensity(const glm::vec2& location) const {
         float density = 0.0f;
-        float mass = 1.0f;
 
-        for (auto position : positions) {
-            float influence = SmoothingKernel(smoothingRadius, glm::distance(position, location));
+        for (auto predictedPos : predictedPositions) {
+            float influence = SmoothingKernel(smoothingRadius, glm::distance(predictedPos, location));
             density += influence * mass;
         }
         return density;
@@ -127,7 +126,7 @@ namespace core {
     float ParticleManager::CalculateSharedPressure(const float& density1, const float& density2) const {
         float pressure1 = DensityToPressure(density1);
         float pressure2 = DensityToPressure(density2);
-        return pressure1 + pressure2 / 2;
+        return (pressure1 + pressure2) / 2;
     }
 
     glm::vec2 ParticleManager::CalculatePressureGradient(const int& particleIndex) const {
@@ -137,15 +136,14 @@ namespace core {
             //skip over itself
             if (particleIndex == i) {continue;}
             float distance = glm::distance(predictedPositions[i], predictedPositions[particleIndex]);
-            glm::vec2 direction = (predictedPositions[i] - predictedPositions[particleIndex]) / distance;
-            if (distance == 0.0f) {
-                direction = glm::normalize(predictedPositions[i] - positions[particleIndex]);
-            }
+            glm::vec2 direction = glm::vec2(0.0f);
+            if (distance == 0.0f) {direction = glm::normalize(predictedPositions[i] - positions[particleIndex]);}
+            else {direction = (predictedPositions[i] - predictedPositions[particleIndex]) / distance;}
             float slope = SmoothingKernelDerivative(smoothingRadius, distance);
             float density = densities[i];
             float sharedPressure = CalculateSharedPressure(density, densities[particleIndex]);
 
-            pressureGradient += sharedPressure * direction * slope * 1.0f / density; //1.0f is the mass of the particle
+            pressureGradient += sharedPressure * direction * slope * mass / density;
             // pressureGradient += direction * -slope * 1.0f / density; //1.0f is the mass of the particle
             //printf("slope at distance%f: %f\n", distance, slope);
         }
@@ -155,11 +153,15 @@ namespace core {
     glm::vec2 ParticleManager::ApplyInputForce(const glm::vec2& inputPos, const int& particleIndex , const float& radius, const float& strength) {
         glm::vec2 force = glm::vec2(0.0f);
         glm::vec2 offset = inputPos - positions[particleIndex];
-        glm::vec2 direction = glm::normalize(offset);
         float distance = glm::length(offset);
+        glm::vec2 direction = glm::vec2(0.0f);
+        if (distance > 0.0f)
+            direction = offset / distance;
+        else
+            direction = glm::vec2(0.0f);
         if (distance < radius) {
             float centreForce = 1 - distance / radius;
-            force = direction  * centreForce * strength - 0.01f * velocities[particleIndex];
+            force = direction * centreForce * strength - 0.01f * velocities[particleIndex];
             //force = (direction * strength) * centreForce;
         }
 
@@ -177,28 +179,36 @@ namespace core {
 
         glm::vec2 direction = glm::vec2(0.0f);
         float distance = 0.0f;
+        glm::vec2 force = glm::vec2(0.0f);
 
         if (positions[particleIndex].x <= boundaryForceRange) {
             distance = positions[particleIndex].x;
             direction = glm::vec2(1.0f, 0.0f);
+            float slope = -SmoothingKernelDerivative(boundaryForceRange, distance);
+            float density = densities[particleIndex];
+            force += direction * boundaryForceStrength * DensityToPressure(density) * slope * mass / density;
         }
         else if (positions[particleIndex].x >= horizontalBoundary - boundaryForceRange) {
             distance = horizontalBoundary - positions[particleIndex].x;
             direction = glm::vec2(-1.0f, 0.0f);
+            float slope = -SmoothingKernelDerivative(boundaryForceRange, distance);
+            float density = densities[particleIndex];
+            force += direction * boundaryForceStrength * DensityToPressure(density) * slope * mass / density;
         }
         if (positions[particleIndex].y <= boundaryForceRange) {
             distance = positions[particleIndex].y;
             direction = glm::vec2(0.0f, 1.0f);
+            float slope = -SmoothingKernelDerivative(boundaryForceRange, distance);
+            float density = densities[particleIndex];
+            force += direction * boundaryForceStrength * DensityToPressure(density) * slope * mass / density;
         }
         else if (positions[particleIndex].y >= verticalBoundary - boundaryForceRange) {
             distance = verticalBoundary - positions[particleIndex].y ;
             direction = glm::vec2(0.0f, -1.0f);
+            float slope = -SmoothingKernelDerivative(boundaryForceRange, distance);
+            float density = densities[particleIndex];
+            force += direction * boundaryForceStrength * DensityToPressure(density) * slope * mass / density;
         }
-
-        float slope = -SmoothingKernelDerivative(boundaryForceRange, distance);
-        float density = densities[particleIndex];
-        glm::vec2 force = direction * boundaryForceStrength * DensityToPressure(density) * slope / density;
-
         return force;
     }
 } // core
