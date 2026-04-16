@@ -9,38 +9,41 @@
 #include <glm/vec2.hpp>
 #include <random>
 
+#include "Shader.h"
+
 namespace core {
     class ParticleManager {
     public:
-        float gravity = 2.5f;
-        float smoothingRadius = 40.0f;
+        float gravity = 0.0f;
+        float smoothingRadius = 0.25f;
         float targetDensity = 0.0f;
-        float pressureMultiplier = 750.0f;
+        float pressureMultiplier = 1.0f;
         float collisionDamping = 0.5f;
         float viscosityStrength = 1.0f;
-        float boundaryForceStrength = 5.0f;
-        float boundaryForceRange = 60.0f;
+        float boundaryForceStrength = 0.0f;
+        float boundaryForceRange = 0.25f;
 
         int particleAmount;
 
+        float texelDensity = 200.0f;
         float horizontalBoundary;
         float verticalBoundary;
 
         bool applyInputForce = false;
-        float inputForceRadius = 150.0f;
-        float inputForceStrength = 0.0f;
+        float inputForceRadius = 0.75f;
+        float inputForceStrength = 0.1f;
 
-        glm::vec2 mousePos;
+        glm::vec2 mousePos{};
 
         std::random_device rd;
 
-        float mass = 1.0f;
+        float mass = 1.0f; //every particle has the same mass for now
         std::vector<glm::vec2> positions;
         std::vector<glm::vec2> predictedPositions;
         std::vector<glm::vec2> velocities;
         std::vector<float> densities;
 
-        ParticleManager(const int particleAmount, const int& screenWidth, const int& screenHeight) : particleAmount(particleAmount), horizontalBoundary(static_cast<float>(screenWidth)), verticalBoundary(static_cast<float>(screenHeight)) {
+        ParticleManager(const int particleAmount, const int& screenWidth, const int& screenHeight) : particleAmount(particleAmount), horizontalBoundary(static_cast<float>(screenWidth) / texelDensity), verticalBoundary(static_cast<float>(screenHeight) / texelDensity){
             for (int i = 0; i < particleAmount; i++) {
 
                 std::random_device rd;
@@ -67,6 +70,8 @@ namespace core {
         glm::vec2 CalculateViscosityForce(const int& particleIndex);
         glm::vec2 CalculateBoundaryForces(const int& particleIndex);
         glm::vec2 CalculatePressureGradient(const int& particleIndex) const;
+        void SetBoundaries(const int& screenWidth, const int& screenHeight);
+        void UpdateShader(const Shader& shader) const;
     };
 } // core
 

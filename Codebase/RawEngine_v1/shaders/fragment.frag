@@ -31,7 +31,7 @@ void main()
     for(int i = 0; i < particleAmount; i++) // dont go over every particle in particles[] since that would create imaginary particles at 0.0, 0.0
     {
         if (length(particles[i].position - screenCoords) < particleRadius){ // if frag is in radius of a particle
-            vec3 lerpedColor = mix(particleColor1, particleColor2, length(particles[i].velocity) / 200.0f); // lerp color based on the particles velocity
+            vec3 lerpedColor = mix(particleColor1, particleColor2, length(particles[i].velocity) / 5.0f); // lerp color based on the particles velocity
             FragColor = vec4(lerpedColor, 1);
             break;
         }

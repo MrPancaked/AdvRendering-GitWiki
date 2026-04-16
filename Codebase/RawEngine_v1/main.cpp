@@ -56,9 +56,7 @@ void framebuffer_size_callback(GLFWwindow *window, int width, int height) {
     g_width = width;
     g_height = height;
 
-    particleManager.horizontalBoundary = static_cast<float>(g_width);
-    particleManager.verticalBoundary = static_cast<float>(g_height);
-
+    particleManager.SetBoundaries(g_width, g_height);
     printf("width: %d, height: %d\n", g_width, g_height);
     glViewport(0, 0, width, height);
 }
@@ -169,16 +167,12 @@ int main() {
         particleManager.UpdateParticles(deltaTime);
 
         // updating shader with particle information
-        shader.setInt("particleAmount", particleManager.particleAmount);
+        particleManager.UpdateShader(shader);
+
         shader.setVec3("particleColor1", particleColor1);
         shader.setVec3("particleColor2", particleColor2);
         shader.setVec3("backgroundColor", backgroundColor);
         shader.setFloat("particleRadius", particleRadius);
-        for (int i = 0; i < particleManager.particleAmount; i++) {
-            std::string index = "particles[" + std::to_string(i) + "].";
-            shader.setVec2(index + "position", particleManager.positions[i]);
-            shader.setVec2(index + "velocity", particleManager.velocities[i]);
-        }
 
         // do everything ImGui
         ImGui_ImplOpenGL3_NewFrame();
@@ -202,9 +196,9 @@ int main() {
             ImGui::DragFloat("Gravity", &particleManager.gravity, 0.01f, 0.0f, 10.0f);
             ImGui::DragFloat("Mass", &particleManager.mass, 0.01f, 0.0f, 10.0f);
             ImGui::DragFloat("Collision Damping", &particleManager.collisionDamping, 0.01f, 0.0f, 1.0f);
-            ImGui::DragFloat("Boundary Force Strength", &particleManager.boundaryForceStrength, 0.1f, 0.0f, 1000.0f);
-            ImGui::DragFloat("PressureMultiplier", &particleManager.pressureMultiplier, 0.01f, 0.0f, 100.0f);
-            ImGui::DragFloat("Target Density", &particleManager.targetDensity, 0.001f, 0.0f, 0.25f);
+            ImGui::DragFloat("Boundary Force Strength", &particleManager.boundaryForceStrength, 0.01f, 0.0f, 100.0f);
+            ImGui::DragFloat("PressureMultiplier", &particleManager.pressureMultiplier, 0.001f, 0.0f, 100.0f);
+            ImGui::DragFloat("Target Density", &particleManager.targetDensity, 0.01f, 0.0f, 10.0f);
 
             ImGui::TreePop();
             ImGui::Separator();
@@ -214,7 +208,7 @@ int main() {
             ImGui::ColorEdit3("Color1", glm::value_ptr(particleColor1));
             ImGui::ColorEdit3("Color2", glm::value_ptr(particleColor2));
             ImGui::SliderFloat("Visual Radius", &particleRadius, 1.0f, 100.0f);
-            ImGui::SliderFloat("Smoothing Radius", &particleManager.smoothingRadius, 0.0f, 1000.0f);
+            ImGui::SliderFloat("Smoothing Radius", &particleManager.smoothingRadius, 0.0f, 1.0f);
 
             ImGui::TreePop();
         }

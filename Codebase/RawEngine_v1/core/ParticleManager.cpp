@@ -3,10 +3,8 @@
 //
 
 #include "ParticleManager.h"
-
-#include <glm/detail/func_geometric.inl>
-//#include <glm/ext/quaternion_geometric.hpp>
-#include <glm/ext/scalar_constants.hpp>
+//#include <glm/detail/func_geometric.inl>
+//#include <glm/ext/scalar_constants.hpp>
 
 namespace core {
 
@@ -33,7 +31,7 @@ namespace core {
             glm::vec2 pressureComp = pressure * pressureMultiplier / densities[i];
 
             glm::vec2 inputForceComp = glm::vec2(0.0f);
-            if (applyInputForce) inputForceComp = ApplyInputForce(mousePos, i, inputForceRadius, inputForceStrength);
+            if (applyInputForce) inputForceComp = ApplyInputForce(mousePos / texelDensity, i, inputForceRadius, inputForceStrength);
 
             glm::vec2 boundaryForceComp = CalculateBoundaryForces(i) * pressureMultiplier / densities[i];
 
@@ -155,16 +153,13 @@ namespace core {
         glm::vec2 offset = inputPos - positions[particleIndex];
         float distance = glm::length(offset);
         glm::vec2 direction = glm::vec2(0.0f);
-        if (distance > 0.0f)
-            direction = offset / distance;
-        else
-            direction = glm::vec2(0.0f);
-        if (distance < radius) {
-            float centreForce = 1 - distance / radius;
-            force = direction * centreForce * strength - 0.01f * velocities[particleIndex];
-            //force = (direction * strength) * centreForce;
-        }
 
+        if (distance < radius) {
+            direction = offset / distance;
+            float centreForce = 1 - distance / radius;
+            //force += (direction * strength - 0.0001f * velocities[particleIndex]) * centreForce;
+            force += (direction * strength * centreForce - 0.01f * velocities[particleIndex]);
+        }
         return force;
     }
 
@@ -210,5 +205,18 @@ namespace core {
             force += direction * boundaryForceStrength * DensityToPressure(density) * slope * mass / density;
         }
         return force;
+    }
+    void ParticleManager::UpdateShader(const Shader& shader) const{
+        shader.setInt("particleAmount", particleAmount);
+        for (int i = 0; i < particleAmount; i++) {
+            std::string index = "particles[" + std::to_string(i) + "].";
+            shader.setVec2(index + "position", positions[i] * texelDensity);
+            shader.setVec2(index + "velocity", velocities[i]);
+        }
+    }
+
+    void ParticleManager::SetBoundaries(const int& screenWidth, const int& screenHeight) {
+        horizontalBoundary = static_cast<float>(screenWidth) / texelDensity;
+        verticalBoundary = static_cast<float>(screenHeight) / texelDensity;
     }
 } // core
