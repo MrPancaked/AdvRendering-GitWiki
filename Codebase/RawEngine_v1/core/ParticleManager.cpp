@@ -150,15 +150,16 @@ namespace core {
 
     glm::vec2 ParticleManager::ApplyInputForce(const glm::vec2& inputPos, const int& particleIndex , const float& radius, const float& strength) {
         glm::vec2 force = glm::vec2(0.0f);
-        glm::vec2 offset = inputPos - positions[particleIndex];
+        glm::vec2 offset = inputPos - predictedPositions[particleIndex];
         float distance = glm::length(offset);
         glm::vec2 direction = glm::vec2(0.0f);
 
         if (distance < radius) {
-            direction = offset / distance;
+            direction = glm::normalize(offset);
             float centreForce = 1 - distance / radius;
+            //force += (direction * strength) * centreForce;
             //force += (direction * strength - 0.0001f * velocities[particleIndex]) * centreForce;
-            force += (direction * strength * centreForce - 0.01f * velocities[particleIndex]);
+            force = (direction * strength);
         }
         return force;
     }

@@ -16,11 +16,11 @@ namespace core {
     public:
         float gravity = 0.0f;
         float smoothingRadius = 0.25f;
-        float targetDensity = 0.0f;
-        float pressureMultiplier = 1.0f;
+        float targetDensity = 50.0f;
+        float pressureMultiplier = 1.5f;
         float collisionDamping = 0.5f;
         float viscosityStrength = 1.0f;
-        float boundaryForceStrength = 0.0f;
+        float boundaryForceStrength = 0.5f;
         float boundaryForceRange = 0.25f;
 
         int particleAmount;
@@ -30,8 +30,8 @@ namespace core {
         float verticalBoundary;
 
         bool applyInputForce = false;
-        float inputForceRadius = 0.75f;
-        float inputForceStrength = 0.1f;
+        float inputForceRadius = 1.0f;
+        float inputForceStrength = 0.5f;
 
         glm::vec2 mousePos{};
 
