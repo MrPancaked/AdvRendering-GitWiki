@@ -17,12 +17,12 @@
 
 double accumulatedTime = 0;
 
-int g_width = 800;
-int g_height = 600;
+int g_width = 1200;
+int g_height = 800;
 
 double xpos, ypos;
 
-int particleAmount = 200;
+int particleAmount = 300;
 core::ParticleManager particleManager(particleAmount, g_width, g_height);
 
 void processInput(GLFWwindow *window) {
@@ -35,16 +35,16 @@ void mouse_button_callback(GLFWwindow* window, int button, int action, int mods)
     printf("cursor position %f, %f\n", xpos, ypos);
 
     if (button == GLFW_MOUSE_BUTTON_LEFT && action == GLFW_PRESS){
-        particleManager.applyInputForce = true;
+        particleManager.applyInputForce = 1;
     }
     else if (button == GLFW_MOUSE_BUTTON_RIGHT && action == GLFW_PRESS){
-        particleManager.applyInputForce = true;
+        particleManager.applyInputForce = -1;
     }
     else if (button == GLFW_MOUSE_BUTTON_LEFT && action == GLFW_RELEASE) {
-        particleManager.applyInputForce = false;
+        particleManager.applyInputForce = 0;
     }
     else if (button == GLFW_MOUSE_BUTTON_RIGHT && action == GLFW_RELEASE) {
-        particleManager.applyInputForce = false;
+        particleManager.applyInputForce = 0;
     }
 }
 

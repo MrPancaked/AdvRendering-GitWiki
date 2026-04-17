@@ -31,8 +31,7 @@ namespace core {
             glm::vec2 pressureComp = pressure * pressureMultiplier / densities[i];
 
             glm::vec2 inputForceComp = glm::vec2(0.0f);
-            if (applyInputForce) inputForceComp = ApplyInputForce(mousePos / texelDensity, i, inputForceRadius, inputForceStrength);
-
+            if (applyInputForce != 0) inputForceComp = ApplyInputForce(mousePos / texelDensity, i, inputForceRadius, inputForceStrength);
             glm::vec2 boundaryForceComp = CalculateBoundaryForces(i) * pressureMultiplier / densities[i];
 
             velocities[i] +=  (pressureComp + gravityComp + inputForceComp + boundaryForceComp);
@@ -159,7 +158,7 @@ namespace core {
             float centreForce = 1 - distance / radius;
             //force += (direction * strength) * centreForce;
             //force += (direction * strength - 0.0001f * velocities[particleIndex]) * centreForce;
-            force = (direction * strength);
+            force = (direction * strength * static_cast<float>(applyInputForce));
         }
         return force;
     }

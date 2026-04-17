@@ -14,7 +14,7 @@
 namespace core {
     class ParticleManager {
     public:
-        float gravity = 0.0f;
+        float gravity = 0.2f;
         float smoothingRadius = 0.25f;
         float targetDensity = 50.0f;
         float pressureMultiplier = 1.5f;
@@ -29,7 +29,7 @@ namespace core {
         float horizontalBoundary;
         float verticalBoundary;
 
-        bool applyInputForce = false;
+        int applyInputForce = 0;
         float inputForceRadius = 1.0f;
         float inputForceStrength = 0.5f;
 
