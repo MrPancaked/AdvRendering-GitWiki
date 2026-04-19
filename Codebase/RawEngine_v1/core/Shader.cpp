@@ -59,8 +59,35 @@ namespace core {
         glDeleteShader(fragment);
     }
 
+    Shader::Shader(const std::string &computePath) {
+        int success;
+        char infoLog[512];
+
+        const unsigned int compute = generateShader(computePath, GL_COMPUTE_SHADER);
+
+        ID = glCreateProgram();
+        glAttachShader(ID, compute);
+        glLinkProgram(ID);
+        // print linking errors if any
+        glGetProgramiv(ID, GL_LINK_STATUS, &success);
+        if(!success)
+        {
+            glGetProgramInfoLog(ID, 512, NULL, infoLog);
+            std::cout << "ERROR::SHADER::PROGRAM::LINKING_FAILED\n" << infoLog << std::endl;
+        }
+
+        // delete the shaders as they're linked into our program now and no longer necessary
+        glDeleteShader(compute);
+    }
+
     void Shader::use() const {
         glUseProgram(ID);
+    }
+
+    void Shader::useCompute(const unsigned int& TEXTURE_WIDTH, const unsigned int& TEXTURE_HEIGHT) const {
+        glUseProgram(ID);
+        glDispatchCompute(TEXTURE_WIDTH, TEXTURE_HEIGHT, 1);
+        glMemoryBarrier(GL_ALL_BARRIER_BITS);
     }
 
     GLint Shader::GetUniformLocation(const std::string &name) const {

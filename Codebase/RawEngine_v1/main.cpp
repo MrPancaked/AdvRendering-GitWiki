@@ -88,8 +88,24 @@ int main() {
 
     //Setup platforms
     ImGui_ImplGlfw_InitForOpenGL(window, true);
-    ImGui_ImplOpenGL3_Init("#version 400");
+    ImGui_ImplOpenGL3_Init("#version 430");
 
+    core::Shader("shaders/compute.comp");
+
+    const unsigned int TEXTURE_WIDTH = 512, TEXTURE_HEIGHT = 512;
+    unsigned int computeTexture;
+
+    glGenTextures(1, &computeTexture);
+    glActiveTexture(GL_TEXTURE0);
+    glBindTexture(GL_TEXTURE_2D, computeTexture);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA32F, TEXTURE_WIDTH, TEXTURE_HEIGHT, 0, GL_RGBA,
+                 GL_FLOAT, NULL);
+
+    glBindImageTexture(0, computeTexture, 0, GL_FALSE, 0, GL_READ_WRITE, GL_RGBA32F);
 
     core::Shader shader("shaders/vertex.vert", "shaders/fragment.frag");
 
@@ -128,7 +144,7 @@ int main() {
     glClearColor(clearColor.r,
                  clearColor.g, clearColor.b, clearColor.a);
 
-    shader.use();
+
 
     glm::vec3 particleColor1 = glm::vec3(1.0f, 0.0f, 1.0f);
     glm::vec3 particleColor2 = glm::vec3(0.0f, 1.0f, 1.0f);
@@ -139,13 +155,13 @@ int main() {
 
     shader.setInt("particleAmount", particleAmount);
 
-
-
     double elapsedSecs;
     double currentTime = glfwGetTime();
     double finishFrameTime = 0.0;
     float deltaTime = 0.0f;
     while (!glfwWindowShouldClose(window)) {
+        shader.use();
+
         clock_t begin = clock();
 
         glfwGetCursorPos(window, &xpos, &ypos);

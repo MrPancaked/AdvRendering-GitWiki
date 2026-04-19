@@ -23,8 +23,10 @@ namespace core {
         unsigned int ID;
 
         Shader(const std::string &vertexPath, const std::string &fragmentPath);
+        Shader(const std::string &computePath);
 
         void use() const;
+        void useCompute(const unsigned int& TEXTURE_WIDTH, const unsigned int& TEXTURE_HEIGHT) const;
 
         GLint GetUniformLocation(const std::string &name) const;
 

@@ -16,11 +16,11 @@ namespace core {
     public:
         float gravity = 0.2f;
         float smoothingRadius = 0.25f;
-        float targetDensity = 50.0f;
-        float pressureMultiplier = 1.5f;
+        float targetDensity = 100.0f;
+        float pressureMultiplier = 3.0f;
         float collisionDamping = 0.5f;
         float viscosityStrength = 1.0f;
-        float boundaryForceStrength = 0.5f;
+        float boundaryForceStrength = 0.0f;
         float boundaryForceRange = 0.25f;
 
         int particleAmount;
