@@ -91,22 +91,9 @@ int main() {
     ImGui_ImplGlfw_InitForOpenGL(window, true);
     ImGui_ImplOpenGL3_Init("#version 430");
 
-    core::Shader("shaders/compute.comp");
+    core::Shader computeShader("shaders/compute.comp");
 
-    const unsigned int TEXTURE_WIDTH = 512, TEXTURE_HEIGHT = 512;
-    unsigned int computeTexture;
 
-    glGenTextures(1, &computeTexture);
-    glActiveTexture(GL_TEXTURE0);
-    glBindTexture(GL_TEXTURE_2D, computeTexture);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA32F, TEXTURE_WIDTH, TEXTURE_HEIGHT, 0, GL_RGBA,
-                 GL_FLOAT, NULL);
-
-    glBindImageTexture(0, computeTexture, 0, GL_FALSE, 0, GL_READ_WRITE, GL_RGBA32F);
 
     core::Shader particleQuadShader("shaders/particleVertex.vert", "shaders/particleFragment.frag");
 
@@ -118,13 +105,13 @@ int main() {
 
     float particleRadius = 10.0f;
 
+    bool useComputeShader = false;
+
     double elapsedSecs;
     double currentTime = glfwGetTime();
     double finishFrameTime = 0.0;
     float deltaTime = 0.0f;
     while (!glfwWindowShouldClose(window)) {
-        particleQuadShader.use();
-
         clock_t begin = clock();
 
         glfwGetCursorPos(window, &xpos, &ypos);
@@ -136,9 +123,17 @@ int main() {
         glClear(GL_COLOR_BUFFER_BIT);
 
         // update all particles
-        particleManager.UpdateParticles(deltaTime);
+        if (!useComputeShader) {
+            particleManager.UpdateParticles(deltaTime);
+        }
+        else {
+            computeShader.use();
+            glDispatchCompute(particleManager.particleAmount, 1, 1);
+            glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT); // change to all barrier bits
+        }
 
-        // updating shader with particle information
+        // updating shader with particle information and RENDERING PARTICLES
+        particleQuadShader.use(); //switch from compute shader to normal shader
         for (int i = 0; i < particleManager.particleAmount; i++) {
             particleQuadShader.setVec2("particlePos", particleManager.scrSpacePositions[i]);
             particleQuadShader.setVec2("velocity", particleManager.velocities[i]);
@@ -163,6 +158,7 @@ int main() {
 
         ImGui::Begin("Settings");
         if (ImGui::TreeNode("General Settings")) {
+            ImGui::Checkbox("Use Compute Shader", &useComputeShader);
             ImGui::ColorEdit3("Background Color", glm::value_ptr(backgroundColor));
             ImGui::DragFloat("Gravity", &particleManager.gravity, 0.01f, 0.0f, 10.0f);
             ImGui::DragFloat("Mass", &particleManager.mass, 0.01f, 0.0f, 10.0f);
@@ -194,10 +190,6 @@ int main() {
         particleQuadShader.setFloat("particleRad", particleRadius);
         particleQuadShader.setVec3("particleColor1", particleColor1);
         particleQuadShader.setVec3("particleColor2", particleColor2);
-
-
-
-
 
         ImGui::Render();
         ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());

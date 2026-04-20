@@ -21,7 +21,9 @@ add_executable(RawEngine main.cpp
         core/ParticleManager.cpp
         core/ParticleManager.h
         core/ParticleQuad.cpp
-        core/ParticleQuad.h)
+        core/ParticleQuad.h
+        core/ComputeParticleManager.cpp
+        core/ComputeParticleManager.h)
 
 add_custom_command(
         TARGET RawEngine PRE_BUILD
