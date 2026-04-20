@@ -40,6 +40,7 @@ namespace core {
             //printf("velocity%d: %f, %f\n", i, velocities[i].x, velocities[i].y);
         }
         SolveCollisions();
+        calculateScreenSpacePos();
     }
 
     void ParticleManager::ChangeParticleAmount() {
@@ -55,6 +56,7 @@ namespace core {
             for (int i = 0; i < increaseAmount; i++) {
                 positions.emplace_back(widthDist(gen), heightDist(gen));
                 predictedPositions.emplace_back(0.0f);
+                scrSpacePositions.emplace_back(0.0f);
                 velocities.emplace_back(0.0f);
                 densities.emplace_back(0.0f);
             }
@@ -62,6 +64,7 @@ namespace core {
         else if (particleAmount < positions.size()) {
             positions.resize(particleAmount);
             predictedPositions.resize(particleAmount);
+            scrSpacePositions.resize(particleAmount);
             velocities.resize(particleAmount);
             densities.resize(particleAmount);
         }
@@ -206,17 +209,19 @@ namespace core {
         }
         return force;
     }
-    void ParticleManager::UpdateShader(const Shader& shader) const{
-        shader.setInt("particleAmount", particleAmount);
-        for (int i = 0; i < particleAmount; i++) {
-            std::string index = "particles[" + std::to_string(i) + "].";
-            shader.setVec2(index + "position", positions[i] * texelDensity);
-            shader.setVec2(index + "velocity", velocities[i]);
-        }
-    }
 
     void ParticleManager::SetBoundaries(const int& screenWidth, const int& screenHeight) {
         horizontalBoundary = static_cast<float>(screenWidth) / texelDensity;
         verticalBoundary = static_cast<float>(screenHeight) / texelDensity;
+    }
+
+    void ParticleManager::calculateScreenSpacePos() {
+        for (int i = 0; i < particleAmount; i++) {
+            glm::vec2 pixelSpacePos = positions[i];
+            glm::vec2 zeroTwoSpacePos = glm::vec2(pixelSpacePos.x * 2.0f / horizontalBoundary, pixelSpacePos.y * 2.0f / verticalBoundary);
+            scrSpacePositions[i] = glm::vec2(zeroTwoSpacePos.x - 1.0f, zeroTwoSpacePos.y - 1.0f);
+            //printf("screenspace Particle Position: %f, %f \n", scrSpacePositions[i].x, scrSpacePositions[i].y);
+        }
+
     }
 } // core

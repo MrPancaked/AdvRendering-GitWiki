@@ -9,6 +9,7 @@
 #include <glm/vec2.hpp>
 #include <random>
 
+#include "ParticleQuad.h"
 #include "Shader.h"
 
 namespace core {
@@ -40,6 +41,7 @@ namespace core {
         float mass = 1.0f; //every particle has the same mass for now
         std::vector<glm::vec2> positions;
         std::vector<glm::vec2> predictedPositions;
+        std::vector<glm::vec2> scrSpacePositions;
         std::vector<glm::vec2> velocities;
         std::vector<float> densities;
 
@@ -53,6 +55,7 @@ namespace core {
 
                 positions.emplace_back(widthDist(gen), heightDist(gen));
                 predictedPositions.emplace_back(0.0f);
+                scrSpacePositions.emplace_back(0.0f);
                 velocities.emplace_back(0.0f, 0.0f);
                 densities.emplace_back(0.0f);
             }
@@ -71,7 +74,8 @@ namespace core {
         glm::vec2 CalculateBoundaryForces(const int& particleIndex);
         glm::vec2 CalculatePressureGradient(const int& particleIndex) const;
         void SetBoundaries(const int& screenWidth, const int& screenHeight);
-        void UpdateShader(const Shader& shader) const;
+
+        void calculateScreenSpacePos();
     };
 } // core
 

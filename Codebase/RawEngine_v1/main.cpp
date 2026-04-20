@@ -12,6 +12,7 @@
 #include <imgui_impl_opengl3.h>
 
 #include "core/ParticleManager.h"
+#include "core/ParticleQuad.h"
 #include "core/Shader.h"
 
 double accumulatedTime = 0;
@@ -107,44 +108,9 @@ int main() {
 
     glBindImageTexture(0, computeTexture, 0, GL_FALSE, 0, GL_READ_WRITE, GL_RGBA32F);
 
-    core::Shader shader("shaders/vertex.vert", "shaders/fragment.frag");
+    core::Shader particleQuadShader("shaders/particleVertex.vert", "shaders/particleFragment.frag");
 
-    float screenQuadVertices[] = {
-        // positions   // texCoords
-        -1.0f, -1.0f,  0.0f, 0.0f,
-         1.0f, -1.0f,  1.0f, 0.0f,
-         1.0f,  1.0f,  1.0f, 1.0f,
-
-        -1.0f, -1.0f,  0.0f, 0.0f,
-         1.0f,  1.0f,  1.0f, 1.0f,
-        -1.0f,  1.0f,  0.0f, 1.0f
-    };
-
-    unsigned int quadVAO, quadVBO;
-    glGenVertexArrays(1, &quadVAO);
-    glGenBuffers(1, &quadVBO);
-
-    glBindVertexArray(quadVAO);
-    glBindBuffer(GL_ARRAY_BUFFER, quadVBO);
-    glBufferData(GL_ARRAY_BUFFER, sizeof(screenQuadVertices), screenQuadVertices, GL_STATIC_DRAW
-    );
-
-    // position
-    glEnableVertexAttribArray(0);
-    glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 4 * sizeof(float), (void*)0);
-
-    // texcoords
-    glEnableVertexAttribArray(1);
-    glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 4 * sizeof(float), (void*)(2 * sizeof(float))
-    );
-
-    glBindVertexArray(0);
-
-    glm::vec4 clearColor = glm::vec4(0.2f, 0.2f, 0.2f, 1.0f);
-    glClearColor(clearColor.r,
-                 clearColor.g, clearColor.b, clearColor.a);
-
-
+    core::ParticleQuad particleQuad;
 
     glm::vec3 particleColor1 = glm::vec3(1.0f, 0.0f, 1.0f);
     glm::vec3 particleColor2 = glm::vec3(0.0f, 1.0f, 1.0f);
@@ -152,15 +118,12 @@ int main() {
 
     float particleRadius = 10.0f;
 
-
-    shader.setInt("particleAmount", particleAmount);
-
     double elapsedSecs;
     double currentTime = glfwGetTime();
     double finishFrameTime = 0.0;
     float deltaTime = 0.0f;
     while (!glfwWindowShouldClose(window)) {
-        shader.use();
+        particleQuadShader.use();
 
         clock_t begin = clock();
 
@@ -169,21 +132,18 @@ int main() {
         particleManager.mousePos = glm::vec2(xpos, ypos);
 
         processInput(window);
+        glClearColor(backgroundColor.r, backgroundColor.g, backgroundColor.b, 1.0f);
         glClear(GL_COLOR_BUFFER_BIT);
-
-        shader.setInt("screen.width", g_width);
-        shader.setInt("screen.height", g_height);
 
         // update all particles
         particleManager.UpdateParticles(deltaTime);
 
         // updating shader with particle information
-        particleManager.UpdateShader(shader);
-
-        shader.setVec3("particleColor1", particleColor1);
-        shader.setVec3("particleColor2", particleColor2);
-        shader.setVec3("backgroundColor", backgroundColor);
-        shader.setFloat("particleRadius", particleRadius);
+        for (int i = 0; i < particleManager.particleAmount; i++) {
+            particleQuadShader.setVec2("particlePos", particleManager.scrSpacePositions[i]);
+            particleQuadShader.setVec2("velocity", particleManager.velocities[i]);
+            particleQuad.RenderQuad();
+        }
 
         // do everything ImGui
         ImGui_ImplOpenGL3_NewFrame();
@@ -219,16 +179,25 @@ int main() {
             ImGui::SliderInt("Amount", &particleManager.particleAmount, 0, 1000);
             ImGui::ColorEdit3("Color1", glm::value_ptr(particleColor1));
             ImGui::ColorEdit3("Color2", glm::value_ptr(particleColor2));
-            ImGui::SliderFloat("Visual Radius", &particleRadius, 1.0f, 100.0f);
-            ImGui::SliderFloat("Smoothing Radius", &particleManager.smoothingRadius, 0.0f, 1.0f);
+            ImGui::SliderFloat("Visual Radius (in pixels)", &particleRadius, 1.0f, 100.0f);
+            ImGui::SliderFloat("Smoothing Radius (in units)", &particleManager.smoothingRadius, 0.0f, 1.0f);
 
             ImGui::TreePop();
         }
         ImGui::End();
 
-        glBindVertexArray(quadVAO);
-        glDrawArrays(GL_TRIANGLES, 0, 6);
-        glBindVertexArray(0);
+        // glBindVertexArray(quadVAO);
+        // glDrawArrays(GL_TRIANGLES, 0, 6);
+        // glBindVertexArray(0);
+
+        particleQuadShader.setVec2("screenSize", glm::vec2(static_cast<float>(g_width), static_cast<float>(g_height)));
+        particleQuadShader.setFloat("particleRad", particleRadius);
+        particleQuadShader.setVec3("particleColor1", particleColor1);
+        particleQuadShader.setVec3("particleColor2", particleColor2);
+
+
+
+
 
         ImGui::Render();
         ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
@@ -249,9 +218,7 @@ int main() {
     ImGui_ImplGlfw_Shutdown();
     ImGui::DestroyContext();
 
-    glDeleteVertexArrays(1, &quadVAO);
-    glDeleteBuffers(1, &quadVBO);
-    glDeleteProgram(shader.ID);
+    glDeleteProgram(particleQuadShader.ID);
     glfwTerminate();
     return 0;
 }
