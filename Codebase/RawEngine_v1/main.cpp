@@ -38,15 +38,19 @@ void mouse_button_callback(GLFWwindow* window, int button, int action, int mods)
 
     if (button == GLFW_MOUSE_BUTTON_LEFT && action == GLFW_PRESS){
         particleManager.applyInputForce = 1;
+        computeParticleManager.applyInputForce = 1;
     }
     else if (button == GLFW_MOUSE_BUTTON_RIGHT && action == GLFW_PRESS){
         particleManager.applyInputForce = -1;
+        computeParticleManager.applyInputForce = -1;
     }
     else if (button == GLFW_MOUSE_BUTTON_LEFT && action == GLFW_RELEASE) {
         particleManager.applyInputForce = 0;
+        computeParticleManager.applyInputForce = 0;
     }
     else if (button == GLFW_MOUSE_BUTTON_RIGHT && action == GLFW_RELEASE) {
         particleManager.applyInputForce = 0;
+        computeParticleManager.applyInputForce = 0;
     }
 }
 
@@ -54,8 +58,10 @@ void framebuffer_size_callback(GLFWwindow *window, int width, int height) {
     g_width = width;
     g_height = height;
 
-    particleManager.SetBoundaries(g_width, g_height);
-    computeParticleManager.SetBoundaries(g_width, g_height);
+    particleManager.screenWidth = static_cast<float>(g_width);
+    particleManager.screenHeight = static_cast<float>(g_height);
+    computeParticleManager.screenWidth = static_cast<float>(g_width);
+    computeParticleManager.screenHeight = static_cast<float>(g_height);
 
     printf("width: %d, height: %d\n", g_width, g_height);
     glViewport(0, 0, width, height);
@@ -161,6 +167,7 @@ int main() {
         }
         else {
             computeParticleManager.ChangeParticleAmount();
+            computeParticleManager.SetBoundaries();
             computeShader.use();
             //predictedPos pass
             computeShader.setInt("pass", 0);
@@ -238,21 +245,23 @@ int main() {
             ImGui::DragFloat("Input force strength", &particleManager.inputForceStrength, 0.001f, 0.0f, 1.0f);
             ImGui::DragFloat("Boundary Force Strength", &particleManager.boundaryForceStrength, 0.01f, 0.0f, 100.0f);
             ImGui::DragFloat("PressureMultiplier", &particleManager.pressureMultiplier, 0.001f, 0.0f, 100.0f);
-            ImGui::DragFloat("Target Density", &particleManager.targetDensity, 0.01f, 0.0f, 10.0f);
+            ImGui::DragFloat("Target Density", &particleManager.targetDensity, 0.01f, 0.0f, 200.0f);
             ImGui::SliderFloat("Smoothing Radius (in units)", &particleManager.smoothingRadius, 0.0f, 1.0f);
+            ImGui::SliderFloat("Texel Density (pixels / unit)", &particleManager.texelDensity, 1.0f, 1000.0f);
 
             ImGui::TreePop();
         }
         if (ImGui::TreeNode("GPU Particle Settings")) {
-            ImGui::SliderInt("Amount", &computeParticleManager.particleAmount, 0, 1000);
+            ImGui::SliderInt("Amount", &computeParticleManager.particleAmount, 0, 10000);
             ImGui::DragFloat("Gravity", &computeParticleManager.gravity, 0.01f, 0.0f, 10.0f);
             ImGui::DragFloat("Mass", &computeParticleManager.mass, 0.01f, 0.0f, 10.0f);
             ImGui::DragFloat("Collision Damping", &computeParticleManager.collisionDamping, 0.01f, 0.0f, 1.0f);
             ImGui::DragFloat("Input force strength", &computeParticleManager.inputForceStrength, 0.001f, 0.0f, 1.0f);
             ImGui::DragFloat("Boundary Force Strength", &computeParticleManager.boundaryForceStrength, 0.01f, 0.0f, 100.0f);
             ImGui::DragFloat("PressureMultiplier", &computeParticleManager.pressureMultiplier, 0.001f, 0.0f, 100.0f);
-            ImGui::DragFloat("Target Density", &computeParticleManager.targetDensity, 0.01f, 0.0f, 10.0f);
+            ImGui::DragFloat("Target Density", &computeParticleManager.targetDensity, 0.01f, 0.0f, 200.0f);
             ImGui::SliderFloat("Smoothing Radius (in units)", &computeParticleManager.smoothingRadius, 0.0f, 1.0f);
+            ImGui::SliderFloat("Texel Density (pixels / unit)", &computeParticleManager.texelDensity, 1.0f, 1000.0f);
 
             ImGui::TreePop();
         }
@@ -277,6 +286,7 @@ int main() {
         computeShader.setInt("applyInputForce", computeParticleManager.applyInputForce);
         computeShader.setFloat("inputForceRadius", computeParticleManager.inputForceRadius);
         computeShader.setFloat("inputForceStrength", computeParticleManager.inputForceStrength);
+        computeShader.setFloat("texelDensity", computeParticleManager.texelDensity);
 
         ImGui::Render();
         ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());

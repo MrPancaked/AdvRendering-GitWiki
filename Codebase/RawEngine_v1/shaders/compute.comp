@@ -10,6 +10,7 @@ layout(std430, binding = 3) buffer Dens {float densities[];};
 
 uniform int pass;
 uniform vec2 boundaries;
+uniform float texelDensity;
 uniform vec2 mousePos;
 uniform int applyInputForce;
 uniform float inputForceRadius;
@@ -22,6 +23,9 @@ uniform float smoothingRadius;
 uniform float pressureMultiplier;
 uniform float targetDensity;
 
+float rand(vec2 co){
+    return fract(sin(dot(co, vec2(12.9898, 78.233))) * 43758.5453);
+}
 
 vec2 Gravity(){
     return vec2(0.0f,-1.0f) * gravity;
@@ -83,7 +87,8 @@ vec2 CalculatePressureGradient(in uint particleIndex, in uint particleAmount){
         if (particleIndex == i) {continue;}
         float dist = distance(predictedPositions[i], predictedPositions[particleIndex]);
         vec2 direction = vec2(0.0f,0.0f);
-        if (dist == 0.0f) {direction = normalize(predictedPositions[i] - positions[particleIndex]);}
+        float f_particleIndex = float(particleIndex);
+        if (dist == 0.0f) {direction = vec2(rand(positions[particleIndex] * f_particleIndex), rand(positions[particleIndex] * -f_particleIndex));}
         else {direction = (predictedPositions[i] - predictedPositions[particleIndex]) / dist;}
         float slope = SmoothingKernelDerivative(smoothingRadius, dist);
         float density = densities[i];
@@ -106,6 +111,7 @@ vec2 ApplyInputForce(vec2 inputPos, vec2 position , float radius, float strength
     }
     return force;
 }
+
 
 void main() {
     uint particleAmount = positions.length();
@@ -133,7 +139,7 @@ void main() {
 
         vec2 inputForceComp = vec2(0.0f,0.0f);
         if (applyInputForce != 0){
-            inputForceComp = ApplyInputForce(mousePos / 200.0f, position, inputForceRadius, inputForceStrength);
+            inputForceComp = ApplyInputForce(mousePos / texelDensity, predictedPosition, inputForceRadius, inputForceStrength);
         }
         velocity += gravityComp + pressureComp + inputForceComp;
         position += velocity * deltaTime;

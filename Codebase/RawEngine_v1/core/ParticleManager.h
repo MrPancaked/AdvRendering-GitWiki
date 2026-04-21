@@ -28,6 +28,8 @@ namespace core {
         int particleAmount;
 
         float texelDensity = 200.0f;
+        float screenWidth;
+        float screenHeight;
         float horizontalBoundary;
         float verticalBoundary;
 
@@ -45,9 +47,11 @@ namespace core {
         std::vector<glm::vec2> velocities;
         std::vector<float> densities;
 
-        ParticleManager(const int particleAmount, const int& screenWidth, const int& screenHeight) : particleAmount(particleAmount), horizontalBoundary(static_cast<float>(screenWidth) / texelDensity), verticalBoundary(static_cast<float>(screenHeight) / texelDensity){
-            for (int i = 0; i < particleAmount; i++) {
+        ParticleManager(const int particleAmount, const int& screenWidth, const int& screenHeight) : particleAmount(particleAmount), screenWidth(static_cast<float>(screenWidth)),
+            screenHeight(static_cast<float>(screenHeight)), horizontalBoundary(0), verticalBoundary(0) {
 
+            SetBoundaries();
+            for (int i = 0; i < particleAmount; i++) {
                 std::random_device rd;
                 std::mt19937 gen(rd());
                 std::uniform_real_distribution<> widthDist(0.0f, horizontalBoundary);
@@ -73,7 +77,7 @@ namespace core {
         glm::vec2 CalculateViscosityForce(const int& particleIndex);
         glm::vec2 CalculateBoundaryForces(const int& particleIndex);
         glm::vec2 CalculatePressureGradient(const int& particleIndex) const;
-        void SetBoundaries(const int& screenWidth, const int& screenHeight);
+        void SetBoundaries();
 
         void calculateScreenSpacePos();
     };

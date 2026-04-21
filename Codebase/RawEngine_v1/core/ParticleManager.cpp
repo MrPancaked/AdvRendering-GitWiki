@@ -13,9 +13,11 @@ namespace core {
         // calling this every frame is okay since std::vector<>.resize only does anything when size actually changes.
         ChangeParticleAmount();
 
+        SetBoundaries();
+
         //predict positions
         for (int i = 0; i < particleAmount; i++) {
-            predictedPositions[i] = positions[i] + velocities[i] * 1.0f / 120.0f;
+            predictedPositions[i] = positions[i] + velocities[i] / 120.0f;
         }
         //update densities
         for (int i = 0; i < particleAmount; i++) {
@@ -207,9 +209,9 @@ namespace core {
         return force;
     }
 
-    void ParticleManager::SetBoundaries(const int& screenWidth, const int& screenHeight) {
-        horizontalBoundary = static_cast<float>(screenWidth) / texelDensity;
-        verticalBoundary = static_cast<float>(screenHeight) / texelDensity;
+    void ParticleManager::SetBoundaries() {
+        horizontalBoundary = screenWidth / texelDensity;
+        verticalBoundary = screenHeight / texelDensity;
     }
 
     void ParticleManager::calculateScreenSpacePos() {

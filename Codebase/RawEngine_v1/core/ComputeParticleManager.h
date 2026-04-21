@@ -30,6 +30,8 @@ namespace core {
         float boundaryForceRange = 0.25f;
 
         float texelDensity = 200.0f;
+        float screenWidth;
+        float screenHeight;
         float horizontalBoundary;
         float verticalBoundary;
 
@@ -48,7 +50,9 @@ namespace core {
 
         GLuint particleVAO{};
 
-        ComputeParticleManager(const int particleAmount, const int& screenWidth, const int& screenHeight) : particleAmount(particleAmount), horizontalBoundary(static_cast<float>(screenWidth) / texelDensity), verticalBoundary(static_cast<float>(screenHeight) / texelDensity){
+        ComputeParticleManager(const int particleAmount, const int& screenWidth, const int& screenHeight) : particleAmount(particleAmount), screenWidth(static_cast<float>(screenWidth)), screenHeight(static_cast<float>(screenHeight)){
+
+            SetBoundaries();
             for (int i = 0; i < particleAmount; i++) {
                 std::random_device rd;
                 std::mt19937 gen(rd());
@@ -67,7 +71,7 @@ namespace core {
         void InitialiseBuffers();
         void ChangeParticleAmount();
         void calculateScreenSpacePos();
-        void SetBoundaries(const int& screenWidth, const int& screenHeight);
+        void SetBoundaries();
     private:
 
     };

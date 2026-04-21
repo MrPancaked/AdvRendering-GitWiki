@@ -72,13 +72,14 @@ namespace core {
         glBufferData(GL_SHADER_STORAGE_BUFFER,velocities.size() * sizeof(glm::vec2),velocities.data(),GL_DYNAMIC_DRAW);
         glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 1, velocityBuffer);
 
+        glBindBuffer(GL_SHADER_STORAGE_BUFFER, predictedPositionBuffer);
+        glBufferData(GL_SHADER_STORAGE_BUFFER,predictedPositions.size() * sizeof(glm::vec2),predictedPositions.data(),GL_DYNAMIC_DRAW);
+        glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 2, predictedPositionBuffer);
+
         glBindBuffer(GL_SHADER_STORAGE_BUFFER, densityBuffer);
         glBufferData(GL_SHADER_STORAGE_BUFFER,densities.size() * sizeof(float),densities.data(),GL_DYNAMIC_DRAW);
         glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 3, densityBuffer);
 
-        glBindBuffer(GL_SHADER_STORAGE_BUFFER, predictedPositionBuffer);
-        glBufferData(GL_SHADER_STORAGE_BUFFER,predictedPositions.size() * sizeof(glm::vec2),predictedPositions.data(),GL_DYNAMIC_DRAW);
-        glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 2, predictedPositionBuffer);
         glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0);
     }
 
@@ -90,8 +91,8 @@ namespace core {
         }
     }
 
-    void ComputeParticleManager::SetBoundaries(const int& screenWidth, const int& screenHeight) {
-        horizontalBoundary = static_cast<float>(screenWidth) / texelDensity;
-        verticalBoundary = static_cast<float>(screenHeight) / texelDensity;
+    void ComputeParticleManager::SetBoundaries() {
+        horizontalBoundary = screenWidth / texelDensity;
+        verticalBoundary = screenHeight / texelDensity;
     }
 } // core
