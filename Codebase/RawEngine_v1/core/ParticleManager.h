@@ -15,6 +15,7 @@
 namespace core {
     class ParticleManager {
     public:
+        float mass = 1.0f;
         float gravity = 0.2f;
         float smoothingRadius = 0.25f;
         float targetDensity = 100.0f;
@@ -38,7 +39,6 @@ namespace core {
 
         std::random_device rd;
 
-        float mass = 1.0f; //every particle has the same mass for now
         std::vector<glm::vec2> positions;
         std::vector<glm::vec2> predictedPositions;
         std::vector<glm::vec2> scrSpacePositions;

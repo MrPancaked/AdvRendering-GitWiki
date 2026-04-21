@@ -1,14 +1,145 @@
 #version 430 core
 
+const float PI = 3.14159265359;
+
 layout (local_size_x = 1, local_size_y = 1, local_size_z = 1) in;
-layout(std430, binding = 0) buffer Pos {vec4 Position[];};
+layout(std430, binding = 0) buffer Pos {vec2 positions[];};
+layout(std430, binding = 1) buffer Vel {vec2 velocities[];};
+layout(std430, binding = 2) buffer Pred {vec2 predictedPositions[];};
+layout(std430, binding = 3) buffer Dens {float densities[];};
+
+uniform int pass;
+uniform vec2 boundaries;
+uniform vec2 mousePos;
+uniform int applyInputForce;
+uniform float inputForceRadius;
+uniform float inputForceStrength;
+uniform float collisionDamping;
+uniform float deltaTime;
+uniform float gravity;
+uniform float mass;
+uniform float smoothingRadius;
+uniform float pressureMultiplier;
+uniform float targetDensity;
+
+
+vec2 Gravity(){
+    return vec2(0.0f,-1.0f) * gravity;
+}
+
+void SolveCollisions(inout vec2 position, inout vec2 velocity) {
+    if (position.x < 0) {
+        position.x = 0;
+        velocity.x *= -1 * collisionDamping;
+    }
+    else if (position.x > boundaries.x) {
+        position.x = boundaries.x;
+        velocity.x *= -1 * collisionDamping;
+    }
+    if (position.y < 0) {
+        position.y = 0;
+        velocity.y *= -1 * collisionDamping;
+    }
+    else if (position.y > boundaries.y) {
+        position.y = boundaries.y;
+        velocity.y *= -1 * collisionDamping;
+    }
+}
+
+float SmoothingKernel(in float radius, in float dist){
+    if (dist > radius) {return 0.0f;}
+    float volume = PI * pow(radius, 4.0f) / 12.0f; //volume of smoothing kernel used for normalisation
+    return (radius - dist) * (radius - dist) / volume;
+}
+
+float SmoothingKernelDerivative(in float radius, in float dist){
+    if (dist > radius) {return 0.0f;}
+    return -12.0f * (radius-dist) / (PI * pow(radius, 4.0f));
+}
+
+float CalculateDensity(in vec2 location, in uint particleAmount) {
+    float density = 0.0f;
+
+    for (int i = 0; i < particleAmount; i++) {
+        float influence = SmoothingKernel(smoothingRadius, distance(predictedPositions[i], location));
+        density += influence * mass;
+    }
+    return density;
+}
+
+float DensityToPressure(in float density){
+    return density - targetDensity;
+}
+
+float CalculateSharedPressure(in float density1, in float density2){
+    float pressure1 = DensityToPressure(density1);
+    float pressure2 = DensityToPressure(density2);
+    return (pressure1 + pressure2) / 2.0f;
+}
+
+vec2 CalculatePressureGradient(in uint particleIndex, in uint particleAmount){
+    vec2 pressureGradient = vec2(0.0f,0.0f);
+    for (int i = 0; i < particleAmount; i++) {
+        if (particleIndex == i) {continue;}
+        float dist = distance(predictedPositions[i], predictedPositions[particleIndex]);
+        vec2 direction = vec2(0.0f,0.0f);
+        if (dist == 0.0f) {direction = normalize(predictedPositions[i] - positions[particleIndex]);}
+        else {direction = (predictedPositions[i] - predictedPositions[particleIndex]) / dist;}
+        float slope = SmoothingKernelDerivative(smoothingRadius, dist);
+        float density = densities[i];
+        float sharedPressure = CalculateSharedPressure(density, densities[particleIndex]);
+
+        pressureGradient += sharedPressure * direction * slope * mass / density;
+    }
+    return pressureGradient;
+}
+
+vec2 ApplyInputForce(vec2 inputPos, vec2 position , float radius, float strength) {
+    vec2 force = vec2(0.0f, 0.0f);
+    vec2 offset = inputPos - position;
+    float dist = length(offset);
+    vec2 direction = vec2(0.0f, 0.0f);
+
+    if (dist < radius) {
+        direction = normalize(offset);
+        force = (direction * strength * applyInputForce);
+    }
+    return force;
+}
 
 void main() {
-    uint i = gl_GlobalInvocationID.x;
+    uint particleAmount = positions.length();
+    uint invocIndex = gl_GlobalInvocationID.x;
+    if (invocIndex >= particleAmount) return;
+    vec2 predictedPosition = predictedPositions[invocIndex].xy;
+    vec2 position = positions[invocIndex].xy;
+    vec2 velocity = velocities[invocIndex].xy;
+    float density = densities[invocIndex];
+    vec2 pressure = vec2(0.0f,0.0f);
 
-    vec2 p = Position[i].xy;
+    if (pass == 0){ //predict positions
+        predictedPosition = position + velocity * 1 / 120.0f;
+        predictedPositions[invocIndex] = predictedPosition;
+    }
+    else if (pass == 1){ //calculate densities
+        density = CalculateDensity(predictedPosition, particleAmount);
+        densities[invocIndex] = density;
+    }
+    else if (pass == 2){ // final position calculation
+        vec2 pressure = CalculatePressureGradient(invocIndex, particleAmount);
+        vec2 pressureComp = pressure * pressureMultiplier / density;
 
-    p += vec2(0.01f);
+        vec2 gravityComp = Gravity();
 
-    Position[i].xy = p;
+        vec2 inputForceComp = vec2(0.0f,0.0f);
+        if (applyInputForce != 0){
+            inputForceComp = ApplyInputForce(mousePos / 200.0f, position, inputForceRadius, inputForceStrength);
+        }
+        velocity += gravityComp + pressureComp + inputForceComp;
+        position += velocity * deltaTime;
+
+        SolveCollisions(position, velocity);
+        positions[invocIndex] = position;
+        velocities[invocIndex] = velocity;
+    }
 }

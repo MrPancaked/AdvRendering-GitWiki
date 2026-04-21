@@ -11,6 +11,7 @@
 #include <imgui_impl_glfw.h>
 #include <imgui_impl_opengl3.h>
 
+#include "core/ComputeParticleManager.h"
 #include "core/ParticleManager.h"
 #include "core/ParticleQuad.h"
 #include "core/Shader.h"
@@ -24,6 +25,7 @@ double xpos, ypos;
 
 int particleAmount = 300;
 core::ParticleManager particleManager(particleAmount, g_width, g_height);
+core::ComputeParticleManager computeParticleManager(1000, g_width, g_height);
 
 void processInput(GLFWwindow *window) {
     if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS)
@@ -53,6 +55,8 @@ void framebuffer_size_callback(GLFWwindow *window, int width, int height) {
     g_height = height;
 
     particleManager.SetBoundaries(g_width, g_height);
+    computeParticleManager.SetBoundaries(g_width, g_height);
+
     printf("width: %d, height: %d\n", g_width, g_height);
     glViewport(0, 0, width, height);
 }
@@ -91,9 +95,30 @@ int main() {
     ImGui_ImplGlfw_InitForOpenGL(window, true);
     ImGui_ImplOpenGL3_Init("#version 430");
 
+    int work_grp_cnt[3];
+    glGetIntegeri_v(GL_MAX_COMPUTE_WORK_GROUP_COUNT, 0, &work_grp_cnt[0]);
+    glGetIntegeri_v(GL_MAX_COMPUTE_WORK_GROUP_COUNT, 1, &work_grp_cnt[1]);
+    glGetIntegeri_v(GL_MAX_COMPUTE_WORK_GROUP_COUNT, 2, &work_grp_cnt[2]);
+    std::cout << "Max work groups per compute shader" <<
+        " x:" << work_grp_cnt[0] <<
+        " y:" << work_grp_cnt[1] <<
+        " z:" << work_grp_cnt[2] << "\n";
+
+    int work_grp_size[3];
+    glGetIntegeri_v(GL_MAX_COMPUTE_WORK_GROUP_SIZE, 0, &work_grp_size[0]);
+    glGetIntegeri_v(GL_MAX_COMPUTE_WORK_GROUP_SIZE, 1, &work_grp_size[1]);
+    glGetIntegeri_v(GL_MAX_COMPUTE_WORK_GROUP_SIZE, 2, &work_grp_size[2]);
+    std::cout << "Max work group sizes" <<
+        " x:" << work_grp_size[0] <<
+        " y:" << work_grp_size[1] <<
+        " z:" << work_grp_size[2] << "\n";
+
+    int work_grp_inv;
+    glGetIntegerv(GL_MAX_COMPUTE_WORK_GROUP_INVOCATIONS, &work_grp_inv);
+    std::cout << "Max invocations count per work group: " << work_grp_inv << "\n";
+
     core::Shader computeShader("shaders/compute.comp");
-
-
+    computeParticleManager.InitialiseBuffers();
 
     core::Shader particleQuadShader("shaders/particleVertex.vert", "shaders/particleFragment.frag");
 
@@ -117,27 +142,65 @@ int main() {
         glfwGetCursorPos(window, &xpos, &ypos);
         ypos = (ypos - g_height) * -1.0f;
         particleManager.mousePos = glm::vec2(xpos, ypos);
+        computeParticleManager.mousePos = glm::vec2(xpos, ypos);
 
         processInput(window);
         glClearColor(backgroundColor.r, backgroundColor.g, backgroundColor.b, 1.0f);
         glClear(GL_COLOR_BUFFER_BIT);
 
-        // update all particles
         if (!useComputeShader) {
+            // update all particles
             particleManager.UpdateParticles(deltaTime);
+            // updating shader with particle information and RENDERING PARTICLES
+            particleQuadShader.use(); //switch from compute shader to normal shader
+            for (int i = 0; i < particleManager.particleAmount; i++) {
+                particleQuadShader.setVec2("particlePos", particleManager.scrSpacePositions[i]);
+                particleQuadShader.setVec2("velocity", particleManager.velocities[i]);
+                particleQuad.RenderQuad();
+            }
         }
         else {
+            computeParticleManager.ChangeParticleAmount();
             computeShader.use();
-            glDispatchCompute(particleManager.particleAmount, 1, 1);
-            glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT); // change to all barrier bits
-        }
+            //predictedPos pass
+            computeShader.setInt("pass", 0);
+            glDispatchCompute(computeParticleManager.particleAmount, 1, 1);
+            glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT);
+            //calculate density pass
+            computeShader.setInt("pass", 1);
+            glDispatchCompute(computeParticleManager.particleAmount, 1, 1);
+            glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT);
+            //pressure Gradient pass
+            computeShader.setInt("pass", 2);
+            glDispatchCompute(computeParticleManager.particleAmount, 1, 1);
+            glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT);
 
-        // updating shader with particle information and RENDERING PARTICLES
-        particleQuadShader.use(); //switch from compute shader to normal shader
-        for (int i = 0; i < particleManager.particleAmount; i++) {
-            particleQuadShader.setVec2("particlePos", particleManager.scrSpacePositions[i]);
-            particleQuadShader.setVec2("velocity", particleManager.velocities[i]);
-            particleQuad.RenderQuad();
+            //fetch buffer data back to cpu
+            glBindBuffer(GL_SHADER_STORAGE_BUFFER, computeParticleManager.positionBuffer);
+            glm::vec2* ptr = (glm::vec2*)glMapBuffer(GL_SHADER_STORAGE_BUFFER, GL_READ_ONLY);
+            if (ptr) {
+                memcpy(computeParticleManager.positions.data(), ptr,computeParticleManager.particleAmount * sizeof(glm::vec2));
+                glUnmapBuffer(GL_SHADER_STORAGE_BUFFER);
+            }
+            glBindBuffer(GL_SHADER_STORAGE_BUFFER, computeParticleManager.velocityBuffer);
+            ptr = (glm::vec2*)glMapBuffer(GL_SHADER_STORAGE_BUFFER, GL_READ_ONLY);
+            if (ptr) {
+                memcpy(computeParticleManager.velocities.data(), ptr,computeParticleManager.particleAmount * sizeof(glm::vec2));
+                glUnmapBuffer(GL_SHADER_STORAGE_BUFFER);
+            }
+
+            // if (computeParticleManager.particleAmount > 0) {
+            //     printf("particle 0 position: %f, %f\n", computeParticleManager.positions[0].x, computeParticleManager.positions[0].y);
+            //     printf("particle 0 velocity: %f, %f\n", computeParticleManager.velocities[0].x, computeParticleManager.velocities[0].y);
+            // }
+
+            computeParticleManager.calculateScreenSpacePos();
+            particleQuadShader.use(); //switch from compute shader to normal shader
+            for (int i = 0; i < computeParticleManager.particleAmount; i++) {
+                particleQuadShader.setVec2("particlePos", computeParticleManager.scrSpacePositions[i]);
+                particleQuadShader.setVec2("velocity", computeParticleManager.velocities[i]);
+                particleQuad.RenderQuad();
+            }
         }
 
         // do everything ImGui
@@ -160,6 +223,15 @@ int main() {
         if (ImGui::TreeNode("General Settings")) {
             ImGui::Checkbox("Use Compute Shader", &useComputeShader);
             ImGui::ColorEdit3("Background Color", glm::value_ptr(backgroundColor));
+            ImGui::ColorEdit3("Color1", glm::value_ptr(particleColor1));
+            ImGui::ColorEdit3("Color2", glm::value_ptr(particleColor2));
+            ImGui::SliderFloat("Visual Radius (in pixels)", &particleRadius, 1.0f, 100.0f);
+
+            ImGui::TreePop();
+            ImGui::Separator();
+        }
+        if (ImGui::TreeNode("CPU Particle Settings")) {
+            ImGui::SliderInt("Amount", &particleManager.particleAmount, 0, 1000);
             ImGui::DragFloat("Gravity", &particleManager.gravity, 0.01f, 0.0f, 10.0f);
             ImGui::DragFloat("Mass", &particleManager.mass, 0.01f, 0.0f, 10.0f);
             ImGui::DragFloat("Collision Damping", &particleManager.collisionDamping, 0.01f, 0.0f, 1.0f);
@@ -167,29 +239,44 @@ int main() {
             ImGui::DragFloat("Boundary Force Strength", &particleManager.boundaryForceStrength, 0.01f, 0.0f, 100.0f);
             ImGui::DragFloat("PressureMultiplier", &particleManager.pressureMultiplier, 0.001f, 0.0f, 100.0f);
             ImGui::DragFloat("Target Density", &particleManager.targetDensity, 0.01f, 0.0f, 10.0f);
+            ImGui::SliderFloat("Smoothing Radius (in units)", &particleManager.smoothingRadius, 0.0f, 1.0f);
 
             ImGui::TreePop();
-            ImGui::Separator();
         }
-        if (ImGui::TreeNode("Particle Settings")) {
-            ImGui::SliderInt("Amount", &particleManager.particleAmount, 0, 1000);
-            ImGui::ColorEdit3("Color1", glm::value_ptr(particleColor1));
-            ImGui::ColorEdit3("Color2", glm::value_ptr(particleColor2));
-            ImGui::SliderFloat("Visual Radius (in pixels)", &particleRadius, 1.0f, 100.0f);
-            ImGui::SliderFloat("Smoothing Radius (in units)", &particleManager.smoothingRadius, 0.0f, 1.0f);
+        if (ImGui::TreeNode("GPU Particle Settings")) {
+            ImGui::SliderInt("Amount", &computeParticleManager.particleAmount, 0, 1000);
+            ImGui::DragFloat("Gravity", &computeParticleManager.gravity, 0.01f, 0.0f, 10.0f);
+            ImGui::DragFloat("Mass", &computeParticleManager.mass, 0.01f, 0.0f, 10.0f);
+            ImGui::DragFloat("Collision Damping", &computeParticleManager.collisionDamping, 0.01f, 0.0f, 1.0f);
+            ImGui::DragFloat("Input force strength", &computeParticleManager.inputForceStrength, 0.001f, 0.0f, 1.0f);
+            ImGui::DragFloat("Boundary Force Strength", &computeParticleManager.boundaryForceStrength, 0.01f, 0.0f, 100.0f);
+            ImGui::DragFloat("PressureMultiplier", &computeParticleManager.pressureMultiplier, 0.001f, 0.0f, 100.0f);
+            ImGui::DragFloat("Target Density", &computeParticleManager.targetDensity, 0.01f, 0.0f, 10.0f);
+            ImGui::SliderFloat("Smoothing Radius (in units)", &computeParticleManager.smoothingRadius, 0.0f, 1.0f);
 
             ImGui::TreePop();
         }
         ImGui::End();
 
-        // glBindVertexArray(quadVAO);
-        // glDrawArrays(GL_TRIANGLES, 0, 6);
-        // glBindVertexArray(0);
-
+        particleQuadShader.use();
         particleQuadShader.setVec2("screenSize", glm::vec2(static_cast<float>(g_width), static_cast<float>(g_height)));
         particleQuadShader.setFloat("particleRad", particleRadius);
         particleQuadShader.setVec3("particleColor1", particleColor1);
         particleQuadShader.setVec3("particleColor2", particleColor2);
+
+        computeShader.use();
+        computeShader.setFloat("deltaTime", deltaTime);
+        computeShader.setVec2("boundaries", glm::vec2(computeParticleManager.horizontalBoundary, computeParticleManager.verticalBoundary));
+        computeShader.setFloat("collisionDamping", computeParticleManager.collisionDamping);
+        computeShader.setFloat("gravity", computeParticleManager.gravity);
+        computeShader.setFloat("mass", computeParticleManager.mass);
+        computeShader.setFloat("smoothingRadius", computeParticleManager.smoothingRadius);
+        computeShader.setFloat("pressureMultiplier", computeParticleManager.pressureMultiplier);
+        computeShader.setFloat("targetDensity", computeParticleManager.targetDensity);
+        computeShader.setVec2("mousePos", computeParticleManager.mousePos);
+        computeShader.setInt("applyInputForce", computeParticleManager.applyInputForce);
+        computeShader.setFloat("inputForceRadius", computeParticleManager.inputForceRadius);
+        computeShader.setFloat("inputForceStrength", computeParticleManager.inputForceStrength);
 
         ImGui::Render();
         ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());

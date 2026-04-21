@@ -136,7 +136,7 @@ namespace core {
             //skip over itself
             if (particleIndex == i) {continue;}
             float distance = glm::distance(predictedPositions[i], predictedPositions[particleIndex]);
-            glm::vec2 direction = glm::vec2(0.0f);
+            glm::vec2 direction{};
             if (distance == 0.0f) {direction = glm::normalize(predictedPositions[i] - positions[particleIndex]);}
             else {direction = (predictedPositions[i] - predictedPositions[particleIndex]) / distance;}
             float slope = SmoothingKernelDerivative(smoothingRadius, distance);
@@ -158,9 +158,6 @@ namespace core {
 
         if (distance < radius) {
             direction = glm::normalize(offset);
-            float centreForce = 1 - distance / radius;
-            //force += (direction * strength) * centreForce;
-            //force += (direction * strength - 0.0001f * velocities[particleIndex]) * centreForce;
             force = (direction * strength * static_cast<float>(applyInputForce));
         }
         return force;
@@ -217,11 +214,9 @@ namespace core {
 
     void ParticleManager::calculateScreenSpacePos() {
         for (int i = 0; i < particleAmount; i++) {
-            glm::vec2 pixelSpacePos = positions[i];
-            glm::vec2 zeroTwoSpacePos = glm::vec2(pixelSpacePos.x * 2.0f / horizontalBoundary, pixelSpacePos.y * 2.0f / verticalBoundary);
+            glm::vec2 zeroTwoSpacePos = glm::vec2(positions[i].x * 2.0f / horizontalBoundary, positions[i].y * 2.0f / verticalBoundary);
             scrSpacePositions[i] = glm::vec2(zeroTwoSpacePos.x - 1.0f, zeroTwoSpacePos.y - 1.0f);
             //printf("screenspace Particle Position: %f, %f \n", scrSpacePositions[i].x, scrSpacePositions[i].y);
         }
-
     }
 } // core
