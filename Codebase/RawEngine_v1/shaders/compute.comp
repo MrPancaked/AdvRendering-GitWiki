@@ -139,7 +139,7 @@ void main() {
 
         vec2 inputForceComp = vec2(0.0f,0.0f);
         if (applyInputForce != 0){
-            inputForceComp = ApplyInputForce(mousePos / texelDensity, predictedPosition, inputForceRadius, inputForceStrength);
+            inputForceComp = ApplyInputForce(mousePos / texelDensity, predictedPosition, inputForceRadius / texelDensity, inputForceStrength);
         }
         velocity += gravityComp + pressureComp + inputForceComp;
         position += velocity * deltaTime;

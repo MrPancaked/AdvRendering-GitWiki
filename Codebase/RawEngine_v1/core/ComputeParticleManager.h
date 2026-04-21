@@ -36,7 +36,7 @@ namespace core {
         float verticalBoundary;
 
         int applyInputForce = 0;
-        float inputForceRadius = 1.0f;
+        float inputForceRadius = 150.0f;
         float inputForceStrength = 0.5f;
 
         glm::vec2 mousePos{};
