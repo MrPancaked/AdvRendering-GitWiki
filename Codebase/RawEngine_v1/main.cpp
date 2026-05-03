@@ -27,7 +27,7 @@ double xpos, ypos;
 
 std::ofstream myfile;
 
-int particleAmount = 9000;
+int particleAmount = 2000 ;
 core::ParticleManager particleManager(particleAmount, g_width, g_height);
 core::ComputeParticleManager computeParticleManager(particleAmount, g_width, g_height);
 
@@ -159,15 +159,8 @@ int main() {
     int frame = 0;
 
     bool record = false;
-    std::time_t now = std::time(nullptr);
-    std::tm* localTime = std::localtime(&now);
-    std::stringstream ss;
-    ss  << "Data/GPU_"
-        << std::to_string(particleAmount) << "_"
-        << std::put_time(localTime, "%Y-%m-%d_%H.%M.%S")
-        << ".csv";
-    myfile.open(ss.str());
-    myfile << "Frame,DeltaTime,ComputeTime,RenderTime\n";
+    bool lastRecord = false;
+    int recordFrames = 1000;
 
     while (!glfwWindowShouldClose(window)) {
         clock_t begin = clock();
@@ -319,14 +312,38 @@ int main() {
         elapsedSecs = double(end - begin) / CLOCKS_PER_SEC;
         accumulatedTime += elapsedSecs;
 
-        if (frame >= 1000) {
+        if (record and !lastRecord) {
+            std::time_t now = std::time(nullptr);
+            std::tm* localTime = std::localtime(&now);
+            std::stringstream ss;
+            if (useComputeShader) {
+                ss  << "Data/GPU/GPU_"
+                    << std::to_string(computeParticleManager.particleAmount);
+            }
+            else {
+                ss  << "Data/CPU/CPU_"
+                    << std::to_string(particleManager.particleAmount);
+            }
+            ss  << "_"
+                << std::put_time(localTime, "%Y-%m-%d_%H.%M.%S")
+                << ".csv";
+            myfile.open(ss.str());
+            myfile << "Frame,DeltaTime,ComputeTime,RenderTime\n";
+            lastRecord = true;
+            const std::string tmp =  std::string{ss.str()};
+            printf("started recording data to %s\n", tmp.c_str());
+        }
+        if (frame >= recordFrames || (!record && lastRecord)) {
             record = false;
+            lastRecord = false;
+            frame = 0;
+            myfile.close();
+            printf("stopped recording to file");
         }
         if (record) {
             writeToFile(frame, deltaTime, computeTime, renderTime);
             frame++;
         }
-
     }
 
     ImGui_ImplOpenGL3_Shutdown();
@@ -335,7 +352,6 @@ int main() {
 
     glDeleteProgram(particleQuadShader.ID);
     glfwTerminate();
-
-    myfile.close();
+    
     return 0;
 }
