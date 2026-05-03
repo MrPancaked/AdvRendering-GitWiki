@@ -9,6 +9,8 @@
 #include <glm/vec2.hpp>
 #include <random>
 
+#include "Shader.h"
+
 namespace core {
     class ComputeParticleManager {
     public:
@@ -29,17 +31,17 @@ namespace core {
         float boundaryForceStrength = 0.0f;
         float boundaryForceRange = 0.25f;
 
-        float texelDensity = 200.0f;
+        float texelDensity = 50.0f;
         float screenWidth;
         float screenHeight;
-        float horizontalBoundary;
-        float verticalBoundary;
+        float horizontalBoundary{};
+        float verticalBoundary{};
 
         int applyInputForce = 0;
         float inputForceRadius = 150.0f;
         float inputForceStrength = 0.5f;
 
-        glm::vec2 mousePos{};
+        glm::vec2 mousePos = glm::vec2(0.0f);
 
         std::random_device rd;
 
@@ -51,7 +53,6 @@ namespace core {
         GLuint particleVAO{};
 
         ComputeParticleManager(const int particleAmount, const int& screenWidth, const int& screenHeight) : particleAmount(particleAmount), screenWidth(static_cast<float>(screenWidth)), screenHeight(static_cast<float>(screenHeight)){
-
             SetBoundaries();
             for (int i = 0; i < particleAmount; i++) {
                 std::random_device rd;
@@ -66,12 +67,12 @@ namespace core {
                 velocities.emplace_back(0.0f, 0.0f);
             }
             calculateScreenSpacePos();
-            //InitialiseBuffers(); // THIS DOESN'T WORK BECAUSE I AM INITIALISING IT BEFORE Main() (before glad and everything important)
         }
         void InitialiseBuffers();
         void ChangeParticleAmount();
         void calculateScreenSpacePos();
         void SetBoundaries();
+        void UpdateParticles(Shader& computeShader);
     private:
 
     };

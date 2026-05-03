@@ -2,6 +2,7 @@
 #include <GLFW/glfw3.h>
 #include <glm/glm.hpp>
 #include <glm/gtc/type_ptr.hpp>
+#include <iostream>
 #include <fstream>
 #include <sstream>
 #include <ctime>
@@ -10,6 +11,7 @@
 #include <imgui.h>
 #include <imgui_impl_glfw.h>
 #include <imgui_impl_opengl3.h>
+#include <iomanip>
 
 #include "core/ComputeParticleManager.h"
 #include "core/ParticleManager.h"
@@ -23,9 +25,17 @@ int g_height = 800;
 
 double xpos, ypos;
 
-int particleAmount = 300;
+std::ofstream myfile;
+
+int particleAmount = 9000;
 core::ParticleManager particleManager(particleAmount, g_width, g_height);
-core::ComputeParticleManager computeParticleManager(1000, g_width, g_height);
+core::ComputeParticleManager computeParticleManager(particleAmount, g_width, g_height);
+
+void writeToFile(const int& frame, const double& deltaTime, const double& computeTime, const double& renderTime) {
+    if (myfile.is_open()) {
+        myfile << frame << "," << deltaTime << "," << computeTime << "," << renderTime << "\n";
+    }
+}
 
 void processInput(GLFWwindow *window) {
     if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS)
@@ -136,12 +146,29 @@ int main() {
 
     float particleRadius = 10.0f;
 
-    bool useComputeShader = false;
+    bool useComputeShader = true;
 
+
+    int simulationSteps = 1;
     double elapsedSecs;
     double currentTime = glfwGetTime();
     double finishFrameTime = 0.0;
-    float deltaTime = 0.0f;
+    double deltaTime = 0.001f;
+    double computeTime = 0.0f;
+    double renderTime = 0.0f;
+    int frame = 0;
+
+    bool record = false;
+    std::time_t now = std::time(nullptr);
+    std::tm* localTime = std::localtime(&now);
+    std::stringstream ss;
+    ss  << "Data/GPU_"
+        << std::to_string(particleAmount) << "_"
+        << std::put_time(localTime, "%Y-%m-%d_%H.%M.%S")
+        << ".csv";
+    myfile.open(ss.str());
+    myfile << "Frame,DeltaTime,ComputeTime,RenderTime\n";
+
     while (!glfwWindowShouldClose(window)) {
         clock_t begin = clock();
 
@@ -154,11 +181,39 @@ int main() {
         glClearColor(backgroundColor.r, backgroundColor.g, backgroundColor.b, 1.0f);
         glClear(GL_COLOR_BUFFER_BIT);
 
+
+
+        double timeBeforeCompute = glfwGetTime();
+        for (int i = 0; i < simulationSteps; i++) {
+            if (!useComputeShader) {
+                // update all particles
+                particleManager.UpdateParticles(deltaTime);
+            }
+            else {
+                computeShader.use();
+                computeShader.setVec2("boundaries", glm::vec2(computeParticleManager.horizontalBoundary, computeParticleManager.verticalBoundary));
+                computeShader.setFloat("collisionDamping", computeParticleManager.collisionDamping);
+                computeShader.setFloat("gravity", computeParticleManager.gravity);
+                computeShader.setFloat("mass", computeParticleManager.mass);
+                computeShader.setFloat("smoothingRadius", computeParticleManager.smoothingRadius);
+                computeShader.setFloat("pressureMultiplier", computeParticleManager.pressureMultiplier);
+                computeShader.setFloat("targetDensity", computeParticleManager.targetDensity);
+                computeShader.setVec2("mousePos", computeParticleManager.mousePos);
+                computeShader.setInt("applyInputForce", computeParticleManager.applyInputForce);
+                computeShader.setFloat("inputForceRadius", computeParticleManager.inputForceRadius);
+                computeShader.setFloat("inputForceStrength", computeParticleManager.inputForceStrength);
+                computeShader.setFloat("texelDensity", computeParticleManager.texelDensity);
+                computeShader.setFloat("deltaTime", deltaTime);
+                computeParticleManager.UpdateParticles(computeShader);
+            }
+        }
+        double timeAfterCompute = glfwGetTime();
+        computeTime = timeAfterCompute - timeBeforeCompute;
+
+        particleQuadShader.use(); //switch from compute shader to normal shader
         if (!useComputeShader) {
-            // update all particles
-            particleManager.UpdateParticles(deltaTime);
+            particleManager.calculateScreenSpacePos();
             // updating shader with particle information and RENDERING PARTICLES
-            particleQuadShader.use(); //switch from compute shader to normal shader
             for (int i = 0; i < particleManager.particleAmount; i++) {
                 particleQuadShader.setVec2("particlePos", particleManager.scrSpacePositions[i]);
                 particleQuadShader.setVec2("velocity", particleManager.velocities[i]);
@@ -166,49 +221,15 @@ int main() {
             }
         }
         else {
-            computeParticleManager.ChangeParticleAmount();
-            computeParticleManager.SetBoundaries();
-            computeShader.use();
-            //predictedPos pass
-            computeShader.setInt("pass", 0);
-            glDispatchCompute(computeParticleManager.particleAmount, 1, 1);
-            glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT);
-            //calculate density pass
-            computeShader.setInt("pass", 1);
-            glDispatchCompute(computeParticleManager.particleAmount, 1, 1);
-            glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT);
-            //pressure Gradient pass
-            computeShader.setInt("pass", 2);
-            glDispatchCompute(computeParticleManager.particleAmount, 1, 1);
-            glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT);
-
-            //fetch buffer data back to cpu
-            glBindBuffer(GL_SHADER_STORAGE_BUFFER, computeParticleManager.positionBuffer);
-            glm::vec2* ptr = (glm::vec2*)glMapBuffer(GL_SHADER_STORAGE_BUFFER, GL_READ_ONLY);
-            if (ptr) {
-                memcpy(computeParticleManager.positions.data(), ptr,computeParticleManager.particleAmount * sizeof(glm::vec2));
-                glUnmapBuffer(GL_SHADER_STORAGE_BUFFER);
-            }
-            glBindBuffer(GL_SHADER_STORAGE_BUFFER, computeParticleManager.velocityBuffer);
-            ptr = (glm::vec2*)glMapBuffer(GL_SHADER_STORAGE_BUFFER, GL_READ_ONLY);
-            if (ptr) {
-                memcpy(computeParticleManager.velocities.data(), ptr,computeParticleManager.particleAmount * sizeof(glm::vec2));
-                glUnmapBuffer(GL_SHADER_STORAGE_BUFFER);
-            }
-
-            // if (computeParticleManager.particleAmount > 0) {
-            //     printf("particle 0 position: %f, %f\n", computeParticleManager.positions[0].x, computeParticleManager.positions[0].y);
-            //     printf("particle 0 velocity: %f, %f\n", computeParticleManager.velocities[0].x, computeParticleManager.velocities[0].y);
-            // }
-
             computeParticleManager.calculateScreenSpacePos();
-            particleQuadShader.use(); //switch from compute shader to normal shader
+            // updating shader with particle information and RENDERING PARTICLES
             for (int i = 0; i < computeParticleManager.particleAmount; i++) {
                 particleQuadShader.setVec2("particlePos", computeParticleManager.scrSpacePositions[i]);
                 particleQuadShader.setVec2("velocity", computeParticleManager.velocities[i]);
                 particleQuad.RenderQuad();
             }
         }
+        renderTime = glfwGetTime() - timeAfterCompute;
 
         // do everything ImGui
         ImGui_ImplOpenGL3_NewFrame();
@@ -218,9 +239,9 @@ int main() {
         ImGui::Begin("Information");
 
         ImGui::Text("Screen Size: %d, %d", g_width, g_height);
-        if (particleManager.particleAmount > 0) {
-            float density = particleManager.CalculateDensity(particleManager.positions[0]);
-            ImGui::Text("density at particle1 = %f\n", density);
+        if (computeParticleManager.particleAmount > 0) {
+            glm::vec2 position = computeParticleManager.positions[0];
+            ImGui::Text("position at particle1 = %f, %f\n", position.x, position.y);
         }
         ImGui::Text("Total run time: %f\n", accumulatedTime);
         ImGui::Text("delta time = %f\n", deltaTime);
@@ -228,7 +249,18 @@ int main() {
 
         ImGui::Begin("Settings");
         if (ImGui::TreeNode("General Settings")) {
+            ImGui::Checkbox("Record DeltaTime", &record);
             ImGui::Checkbox("Use Compute Shader", &useComputeShader);
+            ImGui::SliderInt("Simulation Steps", &simulationSteps, 0, 10);
+            if (ImGui::Button("Next Frame")) {
+                if (!useComputeShader) {
+                    // update all particles
+                    particleManager.UpdateParticles(deltaTime);
+                }
+                else {
+                    computeParticleManager.UpdateParticles(computeShader);
+                }
+            }
             ImGui::ColorEdit3("Background Color", glm::value_ptr(backgroundColor));
             ImGui::ColorEdit3("Color1", glm::value_ptr(particleColor1));
             ImGui::ColorEdit3("Color2", glm::value_ptr(particleColor2));
@@ -273,21 +305,6 @@ int main() {
         particleQuadShader.setVec3("particleColor1", particleColor1);
         particleQuadShader.setVec3("particleColor2", particleColor2);
 
-        computeShader.use();
-        computeShader.setFloat("deltaTime", deltaTime);
-        computeShader.setVec2("boundaries", glm::vec2(computeParticleManager.horizontalBoundary, computeParticleManager.verticalBoundary));
-        computeShader.setFloat("collisionDamping", computeParticleManager.collisionDamping);
-        computeShader.setFloat("gravity", computeParticleManager.gravity);
-        computeShader.setFloat("mass", computeParticleManager.mass);
-        computeShader.setFloat("smoothingRadius", computeParticleManager.smoothingRadius);
-        computeShader.setFloat("pressureMultiplier", computeParticleManager.pressureMultiplier);
-        computeShader.setFloat("targetDensity", computeParticleManager.targetDensity);
-        computeShader.setVec2("mousePos", computeParticleManager.mousePos);
-        computeShader.setInt("applyInputForce", computeParticleManager.applyInputForce);
-        computeShader.setFloat("inputForceRadius", computeParticleManager.inputForceRadius);
-        computeShader.setFloat("inputForceStrength", computeParticleManager.inputForceStrength);
-        computeShader.setFloat("texelDensity", computeParticleManager.texelDensity);
-
         ImGui::Render();
         ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
 
@@ -301,6 +318,15 @@ int main() {
         clock_t end = clock();
         elapsedSecs = double(end - begin) / CLOCKS_PER_SEC;
         accumulatedTime += elapsedSecs;
+
+        if (frame >= 1000) {
+            record = false;
+        }
+        if (record) {
+            writeToFile(frame, deltaTime, computeTime, renderTime);
+            frame++;
+        }
+
     }
 
     ImGui_ImplOpenGL3_Shutdown();
@@ -309,5 +335,7 @@ int main() {
 
     glDeleteProgram(particleQuadShader.ID);
     glfwTerminate();
+
+    myfile.close();
     return 0;
 }

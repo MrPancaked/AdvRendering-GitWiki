@@ -95,4 +95,35 @@ namespace core {
         horizontalBoundary = screenWidth / texelDensity;
         verticalBoundary = screenHeight / texelDensity;
     }
+
+    void ComputeParticleManager::UpdateParticles(Shader& computeShader) {
+        SetBoundaries();
+        ChangeParticleAmount();
+        //predictedPos pass
+        computeShader.setInt("pass", 0);
+        glDispatchCompute(particleAmount, 1, 1);
+        glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT);
+        //calculate density pass
+        computeShader.setInt("pass", 1);
+        glDispatchCompute(particleAmount, 1, 1);
+        glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT);
+        //pressure Gradient pass
+        computeShader.setInt("pass", 2);
+        glDispatchCompute(particleAmount, 1, 1);
+        glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT);
+
+        //fetch buffer data back to cpu
+        glBindBuffer(GL_SHADER_STORAGE_BUFFER, positionBuffer);
+        glm::vec2* ptr = (glm::vec2*)glMapBuffer(GL_SHADER_STORAGE_BUFFER, GL_READ_ONLY);
+        if (ptr) {
+            memcpy(positions.data(), ptr,particleAmount * sizeof(glm::vec2));
+            glUnmapBuffer(GL_SHADER_STORAGE_BUFFER);
+        }
+        glBindBuffer(GL_SHADER_STORAGE_BUFFER, velocityBuffer);
+        ptr = (glm::vec2*)glMapBuffer(GL_SHADER_STORAGE_BUFFER, GL_READ_ONLY);
+        if (ptr) {
+            memcpy(velocities.data(), ptr,particleAmount * sizeof(glm::vec2));
+            glUnmapBuffer(GL_SHADER_STORAGE_BUFFER);
+        }
+    }
 } // core

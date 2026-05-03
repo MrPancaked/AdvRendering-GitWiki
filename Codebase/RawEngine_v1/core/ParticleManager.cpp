@@ -38,11 +38,8 @@ namespace core {
 
             velocities[i] +=  (pressureComp + gravityComp + inputForceComp + boundaryForceComp);
             positions[i] += velocities[i] * deltaTime;
-            //printf("pressureComp%d: %f, %f\n", i, pressureComp.x, pressureComp.y);
-            //printf("velocity%d: %f, %f\n", i, velocities[i].x, velocities[i].y);
         }
         SolveCollisions();
-        calculateScreenSpacePos();
     }
 
     void ParticleManager::ChangeParticleAmount() {
@@ -112,7 +109,6 @@ namespace core {
 
     float ParticleManager::CalculateDensity(const glm::vec2& location) const {
         float density = 0.0f;
-
         for (auto predictedPos : predictedPositions) {
             float influence = SmoothingKernel(smoothingRadius, glm::distance(predictedPos, location));
             density += influence * mass;
@@ -146,8 +142,6 @@ namespace core {
             float sharedPressure = CalculateSharedPressure(density, densities[particleIndex]);
 
             pressureGradient += sharedPressure * direction * slope * mass / density;
-            // pressureGradient += direction * -slope * 1.0f / density; //1.0f is the mass of the particle
-            //printf("slope at distance%f: %f\n", distance, slope);
         }
         return pressureGradient;
     }
