@@ -350,8 +350,11 @@ int main() {
     ImGui_ImplGlfw_Shutdown();
     ImGui::DestroyContext();
 
+    if (myfile.is_open()) {
+        myfile.close();
+    }
     glDeleteProgram(particleQuadShader.ID);
     glfwTerminate();
-    
+
     return 0;
 }
