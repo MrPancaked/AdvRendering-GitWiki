@@ -208,7 +208,7 @@ int main() {
             particleManager.calculateScreenSpacePos();
             // updating shader with particle information and RENDERING PARTICLES
             for (int i = 0; i < particleManager.particleAmount; i++) {
-                particleQuadShader.setVec2("particlePos", particleManager.scrSpacePositions[i]);
+                particleQuadShader.setVec2("particlePosition", particleManager.scrSpacePositions[i]);
                 particleQuadShader.setVec2("velocity", particleManager.velocities[i]);
                 particleQuad.RenderQuad();
             }
@@ -217,7 +217,7 @@ int main() {
             computeParticleManager.calculateScreenSpacePos();
             // updating shader with particle information and RENDERING PARTICLES
             for (int i = 0; i < computeParticleManager.particleAmount; i++) {
-                particleQuadShader.setVec2("particlePos", computeParticleManager.scrSpacePositions[i]);
+                particleQuadShader.setVec2("particlePosition", computeParticleManager.scrSpacePositions[i]);
                 particleQuadShader.setVec2("velocity", computeParticleManager.velocities[i]);
                 particleQuad.RenderQuad();
             }
@@ -294,7 +294,7 @@ int main() {
 
         particleQuadShader.use();
         particleQuadShader.setVec2("screenSize", glm::vec2(static_cast<float>(g_width), static_cast<float>(g_height)));
-        particleQuadShader.setFloat("particleRad", particleRadius);
+        particleQuadShader.setFloat("particleRadius", particleRadius);
         particleQuadShader.setVec3("particleColor1", particleColor1);
         particleQuadShader.setVec3("particleColor2", particleColor2);
 
