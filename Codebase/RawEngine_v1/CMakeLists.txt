@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.29)
-project(RawEngine)
+project(FluidSim)
 
 set(CMAKE_CXX_STANDARD 20)
 
@@ -15,7 +15,7 @@ set(IMGUI_SOURCES
         imgui/backends/imgui_impl_opengl3.cpp
 )
 
-add_executable(RawEngine main.cpp
+add_executable(FluidSim main.cpp
         ${IMGUI_SOURCES}
         core/Shader.cpp
         core/ParticleManager.cpp
@@ -26,7 +26,7 @@ add_executable(RawEngine main.cpp
         core/ComputeParticleManager.h)
 
 add_custom_command(
-        TARGET RawEngine PRE_BUILD
+        TARGET FluidSim PRE_BUILD
         COMMAND ${CMAKE_COMMAND} -E copy_directory
         ${CMAKE_SOURCE_DIR}/shaders/
         ${CMAKE_CURRENT_BINARY_DIR}/shaders/)
@@ -39,11 +39,11 @@ add_custom_target(copy_shaders ALL
         COMMENT "Copying shaders..."
 )
 
-add_dependencies(RawEngine copy_shaders)
+add_dependencies(FluidSim copy_shaders)
 
 find_package(glad CONFIG REQUIRED)
-target_link_libraries(RawEngine PRIVATE glad::glad)
+target_link_libraries(FluidSim PRIVATE glad::glad)
 find_package(glfw3 CONFIG REQUIRED)
-target_link_libraries(RawEngine PRIVATE glfw)
+target_link_libraries(FluidSim PRIVATE glfw)
 find_package(glm CONFIG REQUIRED)
-target_link_libraries(RawEngine PRIVATE glm::glm)
+target_link_libraries(FluidSim PRIVATE glm::glm)

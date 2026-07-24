@@ -12,17 +12,18 @@ namespace core {
     void ParticleManager::UpdateParticles(const float& deltaTime) {
         // calling this every frame is okay since std::vector<>.resize only does anything when size actually changes.
         ChangeParticleAmount();
-
         SetBoundaries();
 
         //predict positions
         for (int i = 0; i < particleAmount; i++) {
             predictedPositions[i] = positions[i] + velocities[i] / 120.0f;
         }
+
         //update densities
         for (int i = 0; i < particleAmount; i++) {
             densities[i] = CalculateDensity(predictedPositions[i]);
         }
+
         //add gravity
         glm::vec2 gravityComp = glm::vec2(0.0f, -1.0f) * gravity;
 
@@ -30,13 +31,15 @@ namespace core {
         for (int i = 0; i < particleAmount; i++) {
 
             glm::vec2 pressure = CalculatePressureGradient(i);
-            glm::vec2 pressureComp = pressure * pressureMultiplier / densities[i];
+            glm::vec2 pressureComp = pressure * pressureMultiplier;
 
             glm::vec2 inputForceComp = glm::vec2(0.0f);
             if (applyInputForce != 0) inputForceComp = ApplyInputForce(mousePos / texelDensity, i, inputForceRadius, inputForceStrength);
-            glm::vec2 boundaryForceComp = CalculateBoundaryForces(i) * pressureMultiplier / densities[i];
+            glm::vec2 boundaryForceComp = CalculateBoundaryForces(i) * pressureMultiplier;
 
-            velocities[i] +=  (pressureComp + gravityComp + inputForceComp + boundaryForceComp);
+            glm::vec2 acceleration = pressureComp + gravityComp + inputForceComp + boundaryForceComp;
+
+            velocities[i] += acceleration * deltaTime;
             positions[i] += velocities[i] * deltaTime;
         }
         SolveCollisions();

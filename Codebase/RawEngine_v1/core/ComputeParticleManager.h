@@ -22,16 +22,16 @@ namespace core {
         std::vector<float> densities;
 
         float mass = 1.0f;
-        float gravity = 0.2f;
+        float gravity = 10.0f;
         float smoothingRadius = 0.25f;
         float targetDensity = 100.0f;
-        float pressureMultiplier = 3.0f;
+        float pressureMultiplier = 2.0f;
         float collisionDamping = 0.5f;
         float viscosityStrength = 1.0f;
         float boundaryForceStrength = 0.0f;
         float boundaryForceRange = 0.25f;
 
-        float texelDensity = 50.0f;
+        float texelDensity = 100.0f;
         float screenWidth;
         float screenHeight;
         float horizontalBoundary{};
@@ -39,7 +39,7 @@ namespace core {
 
         int applyInputForce = 0;
         float inputForceRadius = 150.0f;
-        float inputForceStrength = 0.5f;
+        float inputForceStrength = 25.0f;
 
         glm::vec2 mousePos = glm::vec2(0.0f);
 

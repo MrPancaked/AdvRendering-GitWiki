@@ -13,6 +13,7 @@
 #include <imgui_impl_opengl3.h>
 #include <iomanip>
 
+#include "imgui_internal.h"
 #include "core/ComputeParticleManager.h"
 #include "core/ParticleManager.h"
 #include "core/ParticleQuad.h"
@@ -27,9 +28,8 @@ double xpos, ypos;
 
 std::ofstream myfile;
 
-int particleAmount = 2000 ;
-core::ParticleManager particleManager(particleAmount, g_width, g_height);
-core::ComputeParticleManager computeParticleManager(particleAmount, g_width, g_height);
+core::ParticleManager particleManager(500, g_width, g_height);
+core::ComputeParticleManager computeParticleManager(2000, g_width, g_height);
 
 void writeToFile(const int& frame, const double& deltaTime, const double& computeTime, const double& renderTime) {
     if (myfile.is_open()) {
@@ -86,7 +86,7 @@ int main() {
     glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE);
 #endif
 
-    GLFWwindow *window = glfwCreateWindow(g_width, g_height, "LearnOpenGL", NULL, NULL);
+    GLFWwindow *window = glfwCreateWindow(g_width, g_height, "SPH Fluid Sim", NULL, NULL);
     if (window == NULL) {
         printf("Failed to create GLFW window\n");
         glfwTerminate();
@@ -180,7 +180,7 @@ int main() {
         for (int i = 0; i < simulationSteps; i++) {
             if (!useComputeShader) {
                 // update all particles
-                particleManager.UpdateParticles(deltaTime);
+                particleManager.UpdateParticles(computeTime);
             }
             else {
                 computeShader.use();
@@ -196,7 +196,7 @@ int main() {
                 computeShader.setFloat("inputForceRadius", computeParticleManager.inputForceRadius);
                 computeShader.setFloat("inputForceStrength", computeParticleManager.inputForceStrength);
                 computeShader.setFloat("texelDensity", computeParticleManager.texelDensity);
-                computeShader.setFloat("deltaTime", deltaTime);
+                computeShader.setFloat("deltaTime", computeTime);
                 computeParticleManager.UpdateParticles(computeShader);
             }
         }
@@ -229,21 +229,30 @@ int main() {
         ImGui_ImplGlfw_NewFrame();
         ImGui::NewFrame();
 
-        ImGui::Begin("Information");
+        ImGui::Begin("Information", nullptr, ImGuiWindowFlags_NoMove);
+        ImGui::SetWindowPos(ImVec2(g_width - ImGui::GetWindowWidth(), 0));
 
         ImGui::Text("Screen Size: %d, %d", g_width, g_height);
-        if (computeParticleManager.particleAmount > 0) {
-            glm::vec2 position = computeParticleManager.positions[0];
-            ImGui::Text("position at particle1 = %f, %f\n", position.x, position.y);
+        if (useComputeShader) {
+            if (computeParticleManager.particleAmount > 0) {
+                ImGui::Text("density at particle 1 = %f\n", computeParticleManager.densities[0]);
+            }
         }
+        else {
+            if (particleManager.particleAmount > 0) {
+                ImGui::Text("density at particle 1 = %f\n", particleManager.densities[0]);
+            }
+        }
+
         ImGui::Text("Total run time: %f\n", accumulatedTime);
         ImGui::Text("delta time = %f\n", deltaTime);
         ImGui::End();
 
-        ImGui::Begin("Settings");
+        ImGui::Begin("Settings", nullptr, ImGuiWindowFlags_NoMove);
+        ImGui::SetWindowPos(ImVec2(0, 0));
         if (ImGui::TreeNode("General Settings")) {
-            ImGui::Checkbox("Record DeltaTime", &record);
-            ImGui::Checkbox("Use Compute Shader", &useComputeShader);
+            ImGui::Checkbox("Record DeltaTime (CSV in Data folder)", &record);
+            ImGui::Checkbox("Use GPU", &useComputeShader);
             ImGui::SliderInt("Simulation Steps", &simulationSteps, 0, 10);
             if (ImGui::Button("Next Frame")) {
                 if (!useComputeShader) {
@@ -263,12 +272,12 @@ int main() {
             ImGui::Separator();
         }
         if (ImGui::TreeNode("CPU Particle Settings")) {
-            ImGui::SliderInt("Amount", &particleManager.particleAmount, 0, 1000);
+            ImGui::SliderInt("Amount", &particleManager.particleAmount, 0, 1500);
             ImGui::DragFloat("Gravity", &particleManager.gravity, 0.01f, 0.0f, 10.0f);
             ImGui::DragFloat("Mass", &particleManager.mass, 0.01f, 0.0f, 10.0f);
             ImGui::DragFloat("Collision Damping", &particleManager.collisionDamping, 0.01f, 0.0f, 1.0f);
             ImGui::DragFloat("Input force strength", &particleManager.inputForceStrength, 0.001f, 0.0f, 1.0f);
-            ImGui::DragFloat("Boundary Force Strength", &particleManager.boundaryForceStrength, 0.01f, 0.0f, 100.0f);
+            //ImGui::DragFloat("Boundary Force Strength", &particleManager.boundaryForceStrength, 0.01f, 0.0f, 100.0f);
             ImGui::DragFloat("PressureMultiplier", &particleManager.pressureMultiplier, 0.001f, 0.0f, 100.0f);
             ImGui::DragFloat("Target Density", &particleManager.targetDensity, 0.01f, 0.0f, 200.0f);
             ImGui::SliderFloat("Smoothing Radius (in units)", &particleManager.smoothingRadius, 0.0f, 1.0f);
@@ -282,7 +291,7 @@ int main() {
             ImGui::DragFloat("Mass", &computeParticleManager.mass, 0.01f, 0.0f, 10.0f);
             ImGui::DragFloat("Collision Damping", &computeParticleManager.collisionDamping, 0.01f, 0.0f, 1.0f);
             ImGui::DragFloat("Input force strength", &computeParticleManager.inputForceStrength, 0.001f, 0.0f, 1.0f);
-            ImGui::DragFloat("Boundary Force Strength", &computeParticleManager.boundaryForceStrength, 0.01f, 0.0f, 100.0f);
+            //ImGui::DragFloat("Boundary Force Strength", &computeParticleManager.boundaryForceStrength, 0.01f, 0.0f, 100.0f);
             ImGui::DragFloat("PressureMultiplier", &computeParticleManager.pressureMultiplier, 0.001f, 0.0f, 100.0f);
             ImGui::DragFloat("Target Density", &computeParticleManager.targetDensity, 0.01f, 0.0f, 200.0f);
             ImGui::SliderFloat("Smoothing Radius (in units)", &computeParticleManager.smoothingRadius, 0.0f, 1.0f);

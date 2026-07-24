@@ -16,7 +16,7 @@ namespace core {
     class ParticleManager {
     public:
         float mass = 1.0f;
-        float gravity = 0.2f;
+        float gravity = 10.0f;
         float smoothingRadius = 0.25f;
         float targetDensity = 100.0f;
         float pressureMultiplier = 3.0f;
@@ -35,7 +35,7 @@ namespace core {
 
         int applyInputForce = 0;
         float inputForceRadius = 1.0f;
-        float inputForceStrength = 0.5f;
+        float inputForceStrength = 25.0f;
 
         glm::vec2 mousePos{};
 

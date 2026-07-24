@@ -133,7 +133,7 @@ void main() {
     }
     else if (pass == 2){ // final position calculation
         vec2 pressure = CalculatePressureGradient(invocIndex, particleAmount);
-        vec2 pressureComp = pressure * pressureMultiplier / density;
+        vec2 pressureComp = pressure * pressureMultiplier;
 
         vec2 gravityComp = Gravity();
 
@@ -141,7 +141,9 @@ void main() {
         if (applyInputForce != 0){
             inputForceComp = ApplyInputForce(mousePos / texelDensity, predictedPosition, inputForceRadius / texelDensity, inputForceStrength);
         }
-        velocity += gravityComp + pressureComp + inputForceComp;
+
+        vec2 acceleration = gravityComp + pressureComp + inputForceComp;
+        velocity += acceleration * deltaTime;
         position += velocity * deltaTime;
 
         SolveCollisions(position, velocity);
