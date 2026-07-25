@@ -97,6 +97,7 @@ namespace core {
     }
 
     void ComputeParticleManager::UpdateParticles(Shader& computeShader) {
+        computeShader.use();
         SetBoundaries();
         ChangeParticleAmount();
         //predictedPos pass

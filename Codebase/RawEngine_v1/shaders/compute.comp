@@ -81,7 +81,7 @@ float CalculateSharedPressure(in float density1, in float density2){
     return (pressure1 + pressure2) / 2.0f;
 }
 
-vec2 CalculatePressureGradient(in uint particleIndex, in uint particleAmount){
+vec2  CalculatePressureGradient(in uint particleIndex, in uint particleAmount){
     vec2 pressureGradient = vec2(0.0f,0.0f);
     for (int i = 0; i < particleAmount; i++) {
         if (particleIndex == i) {continue;}
